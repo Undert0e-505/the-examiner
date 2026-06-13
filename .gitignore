@@ -1,0 +1,44 @@
+# Secrets and credentials
+# Nothing in this repo should ever contain real credentials.
+# Use Windows Credential Manager (preferred) or environment variables.
+
+# GitHub PAT (for the OpenClaw `manager` helper, not committed here)
+# Google app password (Jimothy's Gmail)
+# OpenAI API key (for GPT-4o calls — Will's handwriting)
+
+# Indexed paper KVdb bucket ids
+# These are *public*, not secrets — anyone with the URL can read or write
+# to a KVdb bucket. That's fine for our use; the bucket ids are stored in
+# papers/<name>/kvdb-bucket.txt after indexing.
+
+# Local-only paths and per-paper extracted text
+papers/*/extracted.txt
+papers/*/paper.json
+papers/*/markscheme.json
+papers/*/kvdb-bucket.txt
+
+# Per-batch photo transcripts (rebuildable from intake/photos)
+transcripts/
+
+# Generated assessment output (rebuildable)
+assessments/
+
+# Generated HTML for Pages (rebuildable)
+pages/assessments/
+
+# Email outbox (rebuildable)
+outbox/
+
+# Standard Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Intentionally NOT ignored: papers/*.pdf, intake/*/photos, index/papers.json,
+# calibration/*.md, src/, prompts/. These are the actual data.
