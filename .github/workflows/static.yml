@@ -22,13 +22,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Pages
-        uses: actions/configure-pages@v5
+        uses: actions/configure-pages@v6
+        with:
+          # Repository is private; Pages must be enabled in Settings first
+          # (Source: "GitHub Actions"). `enablement: false` tells this action
+          # to configure the deployment without hard-failing on the
+          # "Pages not yet enabled" 404, so the run succeeds once and waits
+          # for the human to flip the toggle.
+          enablement: false
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: 'pages'
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
