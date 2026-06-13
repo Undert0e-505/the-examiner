@@ -1,0 +1,18 @@
+{
+  "kind": "qp",
+  "board": "aqa",
+  "spec": "8702",
+  "paper": "1",
+  "subject": "english-literature",
+  "tier": null,
+  "exam_date_raw": "13 May 2024",
+  "exam_ym": "2024-05",
+  "total_marks": 64,
+  "time_allowed": "1 hour 45 minutes",
+  "source_path": "papers\\AQA-87021-QP-JUN24.PDF",
+  "source_filename": "AQA-87021-QP-JUN24.PDF",
+  "pages": 24,
+  "text_chars": 36183,
+  "pdf_sha256": "9d90ad42328a92773f658203d8a7cb8ef40d9369ca1e73bd56c511f40908cff5",
+  "indexed_at_utc": "2026-06-13T19:15:25+00:00"
+}

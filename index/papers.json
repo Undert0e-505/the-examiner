@@ -1,4 +1,49 @@
 {
-  "generated_at": null,
-  "papers": []
+  "schema_version": 1,
+  "generated_at_utc": "2026-06-13T19:15:25+00:00",
+  "paper_count": 3,
+  "papers": [
+    {
+      "slug": "edexcel-1ma11h-mathematics-higher-2024-11",
+      "board": "edexcel",
+      "spec": "1MA1",
+      "paper": "1H",
+      "subject": "mathematics",
+      "tier": "higher",
+      "exam_ym": "2024-11",
+      "kvdb_bucket": "b21a7ed0-355f-5e1d-b800-300c84a47eb3",
+      "files": {
+        "qp": "1ma1-1h-que-20241107.pdf",
+        "ms": "1ma1-1h-rms-20250109.pdf"
+      }
+    },
+    {
+      "slug": "aqa-84621h-chemistry-higher-2024-05",
+      "board": "aqa",
+      "spec": "8462",
+      "paper": "1H",
+      "subject": "chemistry",
+      "tier": "higher",
+      "exam_ym": "2024-05",
+      "kvdb_bucket": "05c5c944-c9b1-57bb-b313-9cb59673d866",
+      "files": {
+        "ms": "AQA-84621H-MS-JUN24.PDF",
+        "qp": "AQA-84621H-QP-JUN24.PDF"
+      }
+    },
+    {
+      "slug": "aqa-87021-english-literature-2024-05",
+      "board": "aqa",
+      "spec": "8702",
+      "paper": "1",
+      "subject": "english-literature",
+      "tier": null,
+      "exam_ym": "2024-05",
+      "kvdb_bucket": "2aa7ea74-e0cb-5da2-b506-7926beed5abb",
+      "files": {
+        "ms": "AQA-87021-MS-JUN24.PDF",
+        "qp": "AQA-87021-QP-JUN24.PDF"
+      }
+    }
+  ]
 }

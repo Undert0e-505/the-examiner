@@ -1,0 +1,14 @@
+{
+  "slug": "aqa-87021-english-literature-2024-05",
+  "board": "aqa",
+  "spec": "8702",
+  "paper": "1",
+  "subject": "english-literature",
+  "tier": null,
+  "exam_ym": "2024-05",
+  "kvdb_bucket": "2aa7ea74-e0cb-5da2-b506-7926beed5abb",
+  "files": {
+    "ms": "AQA-87021-MS-JUN24.PDF",
+    "qp": "AQA-87021-QP-JUN24.PDF"
+  }
+}

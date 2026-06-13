@@ -1,0 +1,18 @@
+{
+  "kind": "ms",
+  "board": "aqa",
+  "spec": "8462",
+  "paper": "1H",
+  "subject": "chemistry",
+  "tier": null,
+  "exam_date_raw": "June 2024",
+  "exam_ym": "2024-06",
+  "total_marks": null,
+  "time_allowed": null,
+  "source_path": "papers\\AQA-84621H-MS-JUN24.PDF",
+  "source_filename": "AQA-84621H-MS-JUN24.PDF",
+  "pages": 25,
+  "text_chars": 28219,
+  "pdf_sha256": "63bb64877b73ffd3d3071cd858ebcd25d70f0196adb83682cb1329db456771fa",
+  "indexed_at_utc": "2026-06-13T19:15:25+00:00"
+}

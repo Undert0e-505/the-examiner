@@ -1,0 +1,14 @@
+{
+  "slug": "aqa-84621h-chemistry-higher-2024-05",
+  "board": "aqa",
+  "spec": "8462",
+  "paper": "1H",
+  "subject": "chemistry",
+  "tier": "higher",
+  "exam_ym": "2024-05",
+  "kvdb_bucket": "05c5c944-c9b1-57bb-b313-9cb59673d866",
+  "files": {
+    "ms": "AQA-84621H-MS-JUN24.PDF",
+    "qp": "AQA-84621H-QP-JUN24.PDF"
+  }
+}

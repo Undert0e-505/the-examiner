@@ -1,0 +1,18 @@
+{
+  "kind": "ms",
+  "board": "edexcel",
+  "spec": "1MA1",
+  "paper": "1H",
+  "subject": "mathematics",
+  "tier": null,
+  "exam_date_raw": "November 2024",
+  "exam_ym": "2024-11",
+  "total_marks": null,
+  "time_allowed": null,
+  "source_path": "papers\\1ma1-1h-rms-20250109.pdf",
+  "source_filename": "1ma1-1h-rms-20250109.pdf",
+  "pages": 25,
+  "text_chars": 27052,
+  "pdf_sha256": "0e9e4eb8c71df46f09d3c4f4202d8946b46f4325952071e25c292c5be0493a26",
+  "indexed_at_utc": "2026-06-13T19:15:25+00:00"
+}

@@ -1,0 +1,18 @@
+{
+  "kind": "qp",
+  "board": "aqa",
+  "spec": "8462",
+  "paper": "1H",
+  "subject": "chemistry",
+  "tier": "higher",
+  "exam_date_raw": "17 May 2024",
+  "exam_ym": "2024-05",
+  "total_marks": 100,
+  "time_allowed": "1 hour 45 minutes",
+  "source_path": "papers\\AQA-84621H-QP-JUN24.PDF",
+  "source_filename": "AQA-84621H-QP-JUN24.PDF",
+  "pages": 32,
+  "text_chars": 17133,
+  "pdf_sha256": "21a8bba63807685c97f0671a07ccaafb1d40e7756154189afa9c354a0e06cf52",
+  "indexed_at_utc": "2026-06-13T19:15:25+00:00"
+}

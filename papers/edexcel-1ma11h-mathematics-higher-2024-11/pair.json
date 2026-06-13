@@ -1,0 +1,14 @@
+{
+  "slug": "edexcel-1ma11h-mathematics-higher-2024-11",
+  "board": "edexcel",
+  "spec": "1MA1",
+  "paper": "1H",
+  "subject": "mathematics",
+  "tier": "higher",
+  "exam_ym": "2024-11",
+  "kvdb_bucket": "b21a7ed0-355f-5e1d-b800-300c84a47eb3",
+  "files": {
+    "qp": "1ma1-1h-que-20241107.pdf",
+    "ms": "1ma1-1h-rms-20250109.pdf"
+  }
+}

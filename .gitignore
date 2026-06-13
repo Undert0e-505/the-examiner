@@ -6,16 +6,16 @@
 # Google app password (Jimothy's Gmail)
 # OpenAI API key (for GPT-4o calls — Will's handwriting)
 
-# Indexed paper KVdb bucket ids
-# These are *public*, not secrets — anyone with the URL can read or write
-# to a KVdb bucket. That's fine for our use; the bucket ids are stored in
-# papers/<name>/kvdb-bucket.txt after indexing.
+# KVdb bucket ids are *public* (anyone with the URL can read or write
+# to a KVdb bucket). Commit them so the bucket id is reproducible
+# across machines and survives re-indexing.
 
 # Local-only paths and per-paper extracted text
 papers/*/extracted.txt
-papers/*/paper.json
-papers/*/markscheme.json
-papers/*/kvdb-bucket.txt
+
+# Per-paper raw text dumps from index_papers.py. Rebuildable from
+# the original PDFs in this same folder, so don't bloat the repo.
+papers/*/raw/
 
 # Per-batch photo transcripts (rebuildable from intake/photos)
 transcripts/

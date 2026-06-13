@@ -1,0 +1,18 @@
+{
+  "kind": "ms",
+  "board": "aqa",
+  "spec": "8702",
+  "paper": "1",
+  "subject": "english-literature",
+  "tier": null,
+  "exam_date_raw": "June 2024",
+  "exam_ym": "2024-06",
+  "total_marks": null,
+  "time_allowed": null,
+  "source_path": "papers\\AQA-87021-MS-JUN24.PDF",
+  "source_filename": "AQA-87021-MS-JUN24.PDF",
+  "pages": 23,
+  "text_chars": 39162,
+  "pdf_sha256": "e74c341c72441a62456ed4c76c0a54ef5b53295776293de6199a16e3e400c603",
+  "indexed_at_utc": "2026-06-13T19:15:25+00:00"
+}

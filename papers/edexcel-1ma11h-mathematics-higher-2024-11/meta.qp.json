@@ -1,0 +1,18 @@
+{
+  "kind": "qp",
+  "board": "edexcel",
+  "spec": "1MA1",
+  "paper": "1H",
+  "subject": "mathematics",
+  "tier": "higher",
+  "exam_date_raw": "6 November 2024",
+  "exam_ym": "2024-11",
+  "total_marks": 80,
+  "time_allowed": "1 hour 30 minutes",
+  "source_path": "papers\\1ma1-1h-que-20241107.pdf",
+  "source_filename": "1ma1-1h-que-20241107.pdf",
+  "pages": 24,
+  "text_chars": 14221,
+  "pdf_sha256": "5fa47d95d0cf8274de208525ae52f717d9c4c72bf43a3fab93540dcae4eac1be",
+  "indexed_at_utc": "2026-06-13T19:15:25+00:00"
+}
