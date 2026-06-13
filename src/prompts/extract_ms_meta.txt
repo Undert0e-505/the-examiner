@@ -1,0 +1,59 @@
+extract_ms.txt — meta
+
+Model
+  minimax-m3:cloud via Ollama. Long context so the whole mark
+  scheme fits in one call. format="json" constrains the response
+  shape.
+
+User-side input
+  The per-page text dump from
+  papers/<slug>/raw/<basename>.ms.txt, written by index_papers.py.
+  The "MARK SCHEME TEXT:" anchor is replaced with the dump.
+
+Output (JSON)
+  {
+    "schema_version": 1,
+    "marks": [
+      {
+        "question_ref": "q<n>" or "q<n>.<m>" (matches paper.json),
+        "paper_question_number": <printed label, verbatim>,
+        "total_marks_for_question": <int|null>,
+        "criteria": [
+          {
+            "ao": "AO1" | "AO2" | "AO3" | "AO4" | null,
+            "marks": <int>,
+            "indicative_content": [<string>, ...],
+            "spec_refs": [<string>, ...]
+          }
+        ],
+        "page_start": <int, 1-indexed>,
+        "page_end": <int, 1-indexed>
+      }
+    ]
+  }
+
+Validated by llm.py::_validate against an ad-hoc schema
+(extract_questions.py::MARKSCHEME_SCHEMA).
+
+Known failure modes
+  - The LLM is *not* bitwise deterministic at temperature=0. A
+    re-run on the same mark scheme can produce slightly
+    different verbatim bullets and different sub-part groupings.
+    The shape and counts are stable; the words aren't. The
+    committed `markscheme.json` is the canonical version;
+    review any re-run output before committing it.
+  - For AQA English Lit, the model currently distributes marks
+    evenly across AOs (12+12+6+4=34 for every question) but
+    only Section A should carry the AO4 [4 marks] component.
+    Section B questions should be 10+10+10=30, not 34. Easy
+    prompt fix in Phase 2.5.
+  - For AQA Chemistry, the schema is per-row (one row per mark,
+    one criterion per row). Each row carries its own ao + spec_refs.
+  - For Edexcel Maths, ao is always null. The B/M/A process
+    marks are per-step, not per-question. Criteria hold the
+    "for ... ft for ..." verbatim bullets from the mark scheme.
+  - Long inputs (>30 KB) can take 80–180 s on first call. Same
+    as extract_qp.txt. Use --timeout 600 --max-retries 1.
+
+Latency budget
+  Same as extract_qp.txt: 80–180 s per call, 200–400 s per pair.

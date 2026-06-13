@@ -1,5 +1,9 @@
 # intake/
 
+**Phase 3+ — not built yet.** The folder is empty by design. This
+README describes the design we have in mind for Telegram photo
+intake.
+
 Photos from Telegram, one folder per batch. Each batch folder is named
 by the timestamp you sent the photos (e.g. `2026-09-12T18-24/`).
 

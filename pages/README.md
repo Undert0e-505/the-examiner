@@ -1,5 +1,9 @@
 # pages/
 
+**Phase 3+ — not built yet.** The folder is empty by design. This
+README describes the design we have in mind for the GitHub Pages
+site.
+
 GitHub Pages root. Auto-deployed from `main` of this repo.
 
 ```

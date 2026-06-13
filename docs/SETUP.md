@@ -26,23 +26,37 @@ cd D:\dev\the-examiner
 
 ## 2. Papers and markschemes
 
-Drop PDFs into `papers/` with the naming convention from the README:
+Drop PDFs into `papers/`. **Filenames are preserved as-is; the
+content of the cover page is the source of truth, not the filename.**
+The indexer never renames anything. Real examples of files that have
+been indexed (in `papers/`, June 2024 sittings):
 
-```
-<aqa|ocr|eduqas|wjec>-<subject>-<series>-<year>-<paper>.pdf
-<aqa|ocr|eduqas|wjec>-<subject>-<series>-<year>-<paper>-ms.pdf
-```
+- `1ma1-1h-que-20241107.pdf` + `1ma1-1h-rms-20250109.pdf` (Edexcel 1MA1/1H)
+- `AQA-84621H-QP-JUN24.PDF` + `AQA-84621H-MS-JUN24.PDF` (AQA 8462/1H)
+- `AQA-87021-QP-JUN24.PDF` + `AQA-87021-MS-JUN24.PDF` (AQA 8702/1)
 
-Example: `aqa-english-lit-2024-jan-1.pdf` + `aqa-english-lit-2024-jan-1-ms.pdf`.
+Different awarding bodies use different filename schemes. AQA uses
+`<SPEC>-<TIER>-<KIND>-<SERIES><YY>.PDF` (uppercase, kind = QP / MS).
+Pearson Edexcel uses lowercase + dashes. We don't normalise. The
+indexer reads the cover page, identifies board / spec / paper / tier
+/ exam date, and pairs QP with MS by content.
 
-The `src/index_papers.py` step (when written) reads the folder, OCRs
-with the Ollama cloud model, and writes:
+`src/index_papers.py` reads the folder, walks the cover pages with
+regex, and writes per pair:
 
-- `index/papers.json` (master list)
-- `papers/<name>/paper.json` (structured questions)
-- `papers/<name>/markscheme.json` (structured mark criteria)
-- `papers/<name>/kvdb-bucket.txt` (unique KVdb bucket id, **assigned once
+- `index/papers.json` (master list, see `index/README.md` for the schema)
+- `papers/<slug>/meta.qp.json` and `meta.ms.json` (per-file metadata)
+- `papers/<slug>/pair.json` (slug, board, spec, paper, KVdb bucket)
+- `papers/<slug>/kvdb-bucket.txt` (UUIDv5 bucket id, **assigned once
   at index time, never changes**)
+
+**Slug shape:** `<board>-<spec><paper>-<subject>-<tier?>-<YYYY>-<MM>`.
+Example: `aqa-84621h-chemistry-higher-2024-05`.
+
+**Subjects the indexer knows about** are in
+`src/index_papers.py::SPEC_SUBJECT`. To add a new spec, add an entry
+to that dict. The indexer will fall back to a text keyword search on
+the cover page if the spec is unknown, but a map entry is preferred.
 
 ## 3. KVdb.io
 
@@ -58,11 +72,11 @@ array of `{question_id, mark_id, verdict, note}` objects.
 
 ## 4. GitHub Pages  ⚠️ DEFERRED
 
-**Current state (2026-06-13): workflow is in the tree, Pages is not
-enabled.** The deploy workflow `.github/workflows/static.yml` is the
-canonical Pages-starter workflow (checkout, configure-pages,
-upload-pages-artifact, deploy-pages) and runs on every push to `main`,
-but the run fails at `Setup Pages` with:
+**Current state (2026-06-13, end of session):** Pages is still not
+enabled. The deploy workflow `.github/workflows/static.yml` is in
+the tree but has an unstaged diff reverting a previous
+`enablement: false` workaround, so the run fails at `Setup Pages`
+with:
 
 ```
 ##[error]Get Pages site failed. ... Error: Not Found -
@@ -80,6 +94,10 @@ This is expected: the action's whole purpose is to enable Pages, and
 3. Trigger a re-run of the workflow (push to `main` or
    `workflow_dispatch`). The deploy should go green.
 
+The pages content (`pages/assessments/<batch>.html`) is also not
+written yet — that's Phase 3's `src/publish.py`. Even after enabling
+Pages, the site will be empty until the publisher is built.
+
 **Note: private repo is not a blocker.** Pages is fully supported on
 private repos; it serves the site to a public URL (or, on Enterprise,
 to org members only). The only thing private-vs-public changes is who
@@ -95,8 +113,8 @@ content on the public internet" gate is worth one click.
 
 ## 5. Will's email
 
-`WillJOakley@gmail.com` (per the read of USER-family state; verify
-before first send). Aaron and Will both get the per-assessment email.
+`WillJOakley@gmail.com` — verified 2026-06-13. Aaron and Will both
+get the per-assessment email when Phase 5 (Emailer) is built.
 
 ## 6. Telegram bot for photo intake
 
@@ -104,28 +122,55 @@ The Telegram bot writes photos to `intake/<timestamp>/` under the
 bot's working directory. When we wire this up, the bot's working dir
 needs to be the root of this repo (or it needs to know how to route
 photos to `intake/`). **Not yet set up** — `intake/` is empty by
-design for now; the `src/match_paper.py` step is what reads it.
+design for now; the `match_paper.py` step (Phase 3) is what reads it.
 
-## 7. Secrets / env vars (future)
+The OpenClaw gateway already caches Telegram media at
+`C:\Users\openclaw-agent\.openclaw\media\inbound\` (UUIDs with
+original extensions). The bot should *move* photos from there into
+`intake/<batch>/` rather than maintain a separate path. Not wired
+yet.
 
-If we go the `enablement: true` path for Pages (§4) or wire up
-OpenAI (for handwriting OCR), we'll need:
+## 7. Secrets / env vars (current and future)
 
-- `PAGES_TOKEN` (fine-grained PAT, repo admin + Pages write) — repo secret
-- `OPENAI_API_KEY` — repo secret, scope = the-examiner only
-- `KVDB_API_KEY` (if we switch from anonymous PUT to authenticated
-  buckets) — repo secret
+**No secrets committed today.** The repo has no API keys, no
+service tokens, no PATs. The only credential is the GitHub PAT in
+Windows Credential Manager, used by `git push`.
 
-None of these are set up today.
+**When we add Phase 3 (assessor with GPT-4o), we'll need:**
 
-## 8. First-time checklist
+- `OPENAI_API_KEY` — repo secret for the workflow runner, Windows
+  Credential Manager (`openai:api-key` slot) for local runs. Scope:
+  the-examiner only.
 
-- [ ] Token in Credential Manager with Contents + Workflows R/W
-- [ ] `papers/` populated with the first batch (Aaron's `Jimothy
-      Share/Will-papers/` drop on 2026-06-13 is the seed)
-- [ ] Pages enabled in Settings (deferred — see §4)
-- [ ] KVdb buckets created (automatic when `src/index_papers.py` runs)
-- [ ] Telegram bot wired to `intake/`
-- [ ] Will's email confirmed
-- [ ] First end-to-end: photo in → assessment page on Pages → email out
-      → Will's per-mark response → `corrections.md` regenerated
+**If we go the `enablement: true` path for Pages (§4), we'll also need:**
+
+- `PAGES_TOKEN` — fine-grained PAT, repo admin + Pages write — repo
+  secret. Skipped for now per §4.
+
+**If we switch from anonymous PUT to authenticated KVdb buckets:**
+
+- `KVDB_API_KEY` — repo secret. Skipped for now; anonymous PUTs
+  are sufficient.
+
+## 8. First-time checklist (as of 2026-06-13)
+
+- [x] Token in Credential Manager with Contents + Workflows R/W
+- [x] `papers/` populated with the first batch (Aaron's `Jimothy
+      Share/Will-papers/` drop on 2026-06-13 — 6 PDFs across Edexcel
+      Maths, AQA Chemistry, AQA English Lit)
+- [x] Phase 1 (indexer) written, committed (`b34230d`), verified
+      idempotent. Three pairs indexed, three KVdb buckets generated.
+- [x] Phase 2 (extractor) written, committed (`97e64f1`), ran on
+      all three pairs. All 6 `paper.json` / `markscheme.json` files
+      validate against the schema.
+- [x] `minimax-m3:cloud` pulled into local Ollama, working as the
+      Phase 2 LLM. Run with `--timeout 600 --max-retries 1`.
+- [x] Will's email confirmed (`WillJOakley@gmail.com`)
+- [ ] Pages enabled in Settings (deferred — see §4; the
+      publisher script is Phase 3)
+- [ ] Telegram bot wired to `intake/` (deferred — Phase 3)
+- [ ] `OPENAI_API_KEY` in repo secret + Credential Manager
+      (deferred — Phase 3)
+- [ ] First end-to-end: photo in → assessment page on Pages → email
+      out → Will's per-mark response → `corrections.md` regenerated
+      (deferred — Phase 3)

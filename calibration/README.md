@@ -1,5 +1,9 @@
 # calibration/
 
+**Phase 3+ — not built yet.** The folder is empty by design. This
+README describes the design we have in mind for per-subject
+calibration.
+
 Per-subject learning. One markdown file per subject, updated every time
 Will responds to a per-mark prompt.
 
@@ -33,5 +37,12 @@ Example entry:
   specify which technique."
 ```
 
-These files are *committed* to the repo (not .gitignored) because they
-are the actual learning artifact. They're what gets better over time.
+These files are *committed* to the repo (not .gitignored) because
+they are the actual learning artifact. They're what gets better
+over time.
+
+When Phase 3 is built, the first time a subject is assessed, an
+empty `calibration/<subject>.md` is created. As Will responds to
+per-mark prompts, `poll_will_feedback.py` appends learned patterns
+to the file. Each marking pass prepends the calibration file to
+the marking prompt as few-shot examples.
