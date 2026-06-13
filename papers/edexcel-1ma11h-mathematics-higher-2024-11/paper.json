@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "total_marks": 80,
+  "questions": [
+    {
+      "id": "q1",
+      "paper_question_number": "1",
+      "section": null,
+      "extract": null,
+      "prompt": "Work out  818.4 ÷ 1.2",
+      "marks_available": 3,
+      "page_start": 2,
+      "page_end": 2
+    },
+    {
+      "id": "q2",
+      "paper_question_number": "2",
+      "section": null,
+      "extract": null,
+      "prompt": "The table shows the probabilities that a biased dice will land on 3, on 4, on 5 and on 6\nNumber on dice\n1\n2\n3\n4\n5\n6\nProbability\n0.10\n0.30\n0.05\n0.25\n\nKarim assumes that the probabilities that the dice will land on 1 and on 2 are the same.\n\nKarim rolls the biased dice 500 times.\n\n(a) Assuming Karim is right, work out an estimate for the number of times the dice will land on 2\n(3)\n\nKarim is wrong. \nThe probability that the dice will land on 2 is greater than the probability that the dice will land on 1\n\n(b) How does this information affect your answer to part (a)?\n(1)",
+      "marks_available": 4,
+      "page_start": 3,
+      "page_end": 3
+    },
+    {
+      "id": "q3",
+      "paper_question_number": "3",
+      "section": null,
+      "extract": null,
+      "prompt": "(a) Work out  3 1/2 - 1 11/6\n\nGive your answer as a mixed number.\n(2)\n\n(b) Show that  5 1/4 ÷ 2 1/3 = 2 1/4\n(3)",
+      "marks_available": 5,
+      "page_start": 4,
+      "page_end": 4
+    },
+    {
+      "id": "q4",
+      "paper_question_number": "4",
+      "section": null,
+      "extract": null,
+      "prompt": "ABCD is a parallelogram.\nA, B, D, C are vertices with D marked with e and C marked with 3e.\n\nAll angles are measured in degrees.\n\nFind an expression, in terms of e, for the size of angle CAD. \nGive a reason for each stage of your working.",
+      "marks_available": 3,
+      "page_start": 5,
+      "page_end": 5
+    },
+    {
+      "id": "q5",
+      "paper_question_number": "5",
+      "section": null,
+      "extract": null,
+      "prompt": "A car travelled 4.96 miles at an average speed of 30.4 miles per hour.\n\n(a) Work out an estimate for the time taken by the car. \nGive your answer in minutes.\n(3)\n\n(b) Is your answer to part (a) an underestimate or an overestimate? \nGive a reason for your answer.\n(1)",
+      "marks_available": 4,
+      "page_start": 6,
+      "page_end": 6
+    },
+    {
+      "id": "q6",
+      "paper_question_number": "6",
+      "section": null,
+      "extract": null,
+      "prompt": "Here is a pentagon with interior angles labelled a, b, c, d, e.\n\nAngle a = angle c \nAngle b = 155° \nAngle d is three times the size of angle c \nAngle e is two times the size of angle c\n\nWork out the size of angle a",
+      "marks_available": 4,
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "id": "q7",
+      "paper_question_number": "7",
+      "section": null,
+      "extract": null,
+      "prompt": "The graph shows the volume of water, V litres, in a tank at time t seconds.\n\nWhat does the gradient of this graph represent?",
+      "marks_available": 1,
+      "page_start": 8,
+      "page_end": 8
+    },
+    {
+      "id": "q8",
+      "paper_question_number": "8",
+      "section": null,
+      "extract": null,
+      "prompt": "The diagram shows a solid triangular prism on a horizontal floor.\n2 m\n\npressure = force/area\n\nThe face in contact with the floor is a rectangle of width 2 m.\n\nThe pressure on the floor due to the prism is 80 newtons/m²\nThe force exerted by the prism on the floor is 720 newtons.\n\nWork out the length of the prism.",
+      "marks_available": 3,
+      "page_start": 9,
+      "page_end": 9
+    },
+    {
+      "id": "q9",
+      "paper_question_number": "9",
+      "section": null,
+      "extract": null,
+      "prompt": "The cumulative frequency graph gives information about the marks that 60 students got in a test.\n\nFor these 60 students \nthe highest mark was 74 \nthe lowest mark was 8\n\n(a) On the grid below, draw a box plot for the distribution of the marks.\n(3)\n\nThe pass mark for the test was 40\n\nSian says,\n\n\"30% of the 60 students passed the test.\"\n\n(b) Is Sian correct? \nYou must show how you get your answer.\n(3)",
+      "marks_available": 6,
+      "page_start": 10,
+      "page_end": 11
+    },
+    {
+      "id": "q10",
+      "paper_question_number": "10",
+      "section": null,
+      "extract": null,
+      "prompt": "(a) Work out  25 × 1/8 1/2 1/3\n(2)\n\n(b) Find the value of  (1/32)^(3/5)\n(2)",
+      "marks_available": 4,
+      "page_start": 11,
+      "page_end": 11
+    },
+    {
+      "id": "q11",
+      "paper_question_number": "11",
+      "section": null,
+      "extract": null,
+      "prompt": "Kate was asked to factorise x² + 5x + 6 in the form (x + a)(x + b)\n\nKate says,\n\"The sum of a and b must be 6 and the product of a and b must be 5\"\n\n(a) Explain what is wrong with Kate's statement.\n(1)\n\n(b) Factorise fully  2m² – 2\n(2)\n\n(c) Factorise fully  ax + bx – ay – by\n(2)",
+      "marks_available": 5,
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "id": "q12",
+      "paper_question_number": "12",
+      "section": null,
+      "extract": null,
+      "prompt": "A, B and C are three solid spheres.\n\nSphere A has a volume of 64 cm³\nSphere B has a volume of 125 cm³\n\nThe radius of sphere C is 50% of the radius of sphere B.\n\nWork out the ratio of the surface area of sphere A to the surface area of sphere C. \nGive your answer in the form a : b where a and b are integers.",
+      "marks_available": 4,
+      "page_start": 13,
+      "page_end": 13
+    },
+    {
+      "id": "q13",
+      "paper_question_number": "13",
+      "section": null,
+      "extract": null,
+      "prompt": "Here are two cuboids.\n\nCuboid B has dimensions 2x, x – 3, x + 3.\nCuboid A has dimensions 2x – 1, x – 1, x + 2.\n\nAll lengths are measured in centimetres.\n\nThe volume of cuboid A is 142 cm³ greater than the volume of cuboid B.\n\nWork out the value of x.",
+      "marks_available": 5,
+      "page_start": 14,
+      "page_end": 14
+    },
+    {
+      "id": "q14",
+      "paper_question_number": "14",
+      "section": null,
+      "extract": null,
+      "prompt": "ABC is a triangle.\nAngle A = 30°, angle B = 45°, side BC = 3√2 cm.\n\nWork out the length of AB.",
+      "marks_available": 3,
+      "page_start": 15,
+      "page_end": 15
+    },
+    {
+      "id": "q15",
+      "paper_question_number": "15",
+      "section": null,
+      "extract": null,
+      "prompt": "OXYZ is a parallelogram with points M on OY and N on OZ.\n\nOY→ = a and OZ→ = b\n\nM is the point on OY such that OM : MY = 1 : 3 \nN is the point on OZ such that ON : NZ = 1 : 2\n\nWork out the ratio  XN : MN \nYou must show all your working.",
+      "marks_available": 4,
+      "page_start": 16,
+      "page_end": 16
+    },
+    {
+      "id": "q16",
+      "paper_question_number": "16",
+      "section": null,
+      "extract": null,
+      "prompt": "(a) Rationalise the denominator of  15/√5\n\nGive your answer in its simplest form.\n(2)\n\n(b) Write (75)^(1/2) / 2√3 in the form a√b / c where a, b and c are integers.\n(4)",
+      "marks_available": 6,
+      "page_start": 17,
+      "page_end": 17
+    },
+    {
+      "id": "q17",
+      "paper_question_number": "17",
+      "section": null,
+      "extract": null,
+      "prompt": "A, B and C are points on a circle, centre O. D is a point outside the circle such that CD is a tangent to the circle.\n\nAngle BCD = 40° \nAngle OAB = 3 × angle OAC\n\nWork out the size of angle ACD. \nWrite down any circle theorems that you use.",
+      "marks_available": 4,
+      "page_start": 18,
+      "page_end": 18
+    },
+    {
+      "id": "q18",
+      "paper_question_number": "18",
+      "section": null,
+      "extract": null,
+      "prompt": "f(x) = 5/3 x - 4\n\n(a) Find  f⁻¹(x)\n(2)\n\nFor all values of x\ng(x) = (x – 1)²  and  h(x) = 1 – 2x\n\n(b) Work out the value of gh(5)\n(2)",
+      "marks_available": 4,
+      "page_start": 19,
+      "page_end": 19
+    },
+    {
+      "id": "q19",
+      "paper_question_number": "19",
+      "section": null,
+      "extract": null,
+      "prompt": "In the semi-finals of a chess tournament, \nplayer A will play player B \n\n    and player C will play player D.\n\nThe two winners will then play each other in the final.\n\nThe probability that player A will win against player B is 0.6 \nThe probability that player A will win against player C is 0.5 \nThe probability that player A will win against player D is 0.3 \nThe probability that player C will win against player D is 0.2\n\nWork out the probability that player A will win the chess tournament.",
+      "marks_available": 4,
+      "page_start": 20,
+      "page_end": 20
+    },
+    {
+      "id": "q20",
+      "paper_question_number": "20",
+      "section": null,
+      "extract": null,
+      "prompt": "C is the circle with equation  x² + y² = 4\n\nFind an equation of the tangent to C at the point (p, 1) where p > 0 \nGive your answer in the form  y = ax + b where a and b are integers. \nYou must show all your working.",
+      "marks_available": 4,
+      "page_start": 21,
+      "page_end": 21
+    }
+  ],
+  "slug": "edexcel-1ma11h-mathematics-higher-2024-11",
+  "kind": "qp",
+  "extracted_at_utc": "2026-06-13T19:41:22+00:00",
+  "extractor": {
+    "model": "minimax-m3:cloud",
+    "base_url": "http://127.0.0.1:11434"
+  }
+}

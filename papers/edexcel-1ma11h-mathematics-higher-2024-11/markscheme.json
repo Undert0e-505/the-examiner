@@ -1,0 +1,886 @@
+{
+  "schema_version": 1,
+  "marks": [
+    {
+      "question_ref": "q1",
+      "paper_question_number": "1",
+      "total_marks_for_question": 3,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a start to a method, eg 8184 ÷ 12 (or 818.4 ÷ 1.2) that leads to 6 as the first digit",
+            "or for a complete method with no more than one arithmetic error",
+            "A start to a repeated subtraction method or build-up method is acceptable if a correct first digit of 6 is found"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for digits 682"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "ft (dep M1) for correct placement of the decimal point into their final answer"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 6,
+      "page_end": 6
+    },
+    {
+      "question_ref": "q2",
+      "paper_question_number": "2",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for process to find sum of unknown probabilities eg 1 – (0.10 + 0.30 + 0.05 + 0.25) (= 0.3) oe",
+            "or for process to find number of times dice lands on 3, 4, 5 or 6 eg (0.10 + 0.30 + 0.05 + 0.25) × 500 (= 350) oe",
+            "Award mark for any two probabilities that sum to 0.3 eg in the table or probability of 2 = 0.15"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a complete process, eg (\"0.3\" ÷ 2) × 500 oe",
+            "or (500 – \"350\") ÷ 2 oe"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "cao (P1P1A0 for answer of 75:500 or 75/500)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for an explanation that the answer will be greater",
+            "Acceptable examples: It makes the answer an underestimate; The number will be higher; The answer will increase / will go up; The number of 2s will increase; It would be more than [75]",
+            "Not acceptable examples: My answer will change; My answer is incorrect; The calculation will change; The probability will change; It would make the probability of 2 go up; My answer won't change"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "question_ref": "q3",
+      "paper_question_number": "3",
+      "total_marks_for_question": 5,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a method to subtract by writing both fractions with a common denominator with at least one correct numerator, eg 3 1/3 - 1/6 or 3 1/6 - 1/6 (= 2 6/6) or 2 1/7 - 1/6 (= 1 4/6) or 4 2/12 - 1 4/12 (= 2 8/12)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 1 1/3 or an equivalent mixed number",
+            "Do not isw incorrect further work from correct equivalent mixed number"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for conversion to improper fractions, eg 2 1/4 or 7/3 or 9/4"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "(dep) for method to divide by a fraction, eg 2 1/3 ÷ 4/7 (shown as ×) or 63/28 ÷ 12/12"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for complete work showing each stage as far as 9/4 or 7/2 28",
+            "Must see an intermediate step, eg 63/28 must be seen and then cancelled or correct cancelling seen before the multiplication"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 8,
+      "page_end": 8
+    },
+    {
+      "question_ref": "q4",
+      "paper_question_number": "4",
+      "total_marks_for_question": 3,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for angle ACD = e",
+            "or for angle ADC + angle BAD = 180",
+            "or for angle BAX = 3e (where X lies on DA extended)",
+            "Angles must be clearly labelled on the diagram or otherwise identified"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 180 – 4e oe",
+            "May be unsimplified"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "(dep M1) for an appropriate reason relating to parallel lines from eg alternate angles are equal",
+            "or allied angles / co-interior angles add up to 180",
+            "or for corresponding angles are equal",
+            "Underlined words need to be shown",
+            "Reason needs to be linked to their method, which can be implied from correctly identified angles (stated or written on the diagram)"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 9,
+      "page_end": 9
+    },
+    {
+      "question_ref": "q5",
+      "paper_question_number": "5",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for rounding of distance = 5 (miles) or speed = 30 (mph)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "(dep) for using time = distance/speed eg 5 ÷ 30",
+            "or for a complete process, eg 30 ÷ 60 (= 0.5) and 5 ÷ \"0.5\" or 30 ÷ 5 (= 6) and 60 ÷ \"6\" or 60/4.96 × 30"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a correct answer following through their correct rounded distance and/or speed"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "ft from (a) for decision with correct reasoning, eg overestimate as dividing a larger number by a smaller number",
+            "or overestimate as miles rounded up and speed rounded down",
+            "Ft the rounding and process from (a)",
+            "Must relate to estimation and not rounding of their final answer and they must have a final answer to part (a)"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 9,
+      "page_end": 9
+    },
+    {
+      "question_ref": "q6",
+      "paper_question_number": "6",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for process to find the sum of the interior angles of a pentagon, eg 180 × (5 – 2) (= 540) oe",
+            "Can be implied by the shape correctly divided into triangle and quadrilateral or three triangles with correct angle sums marked"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for the start to a process of giving each angle in a common form, eg d = 3c or e = 2c or x, 3x, 2x",
+            "Can be implied by division by 7 or 1, 1, 3, 2 given in a ratio eg 1 : 2 : 1 : 3"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for process to find the value of c, eg ([540] – 155) ÷ 7 oe",
+            "or for a correct equation in one variable, eg c + 155 + c + 3c + 2c = [540] oe",
+            "Where [540] is what they believe to be the angle sum of the pentagon"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "cao"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 10,
+      "page_end": 10
+    },
+    {
+      "question_ref": "q7",
+      "paper_question_number": "7",
+      "total_marks_for_question": 1,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a correct explanation",
+            "Acceptable examples: The rate of water poured; Speed of pouring water out from the tank; How fast the water is being used (in the tank over time); Amount of water decreasing in the tank each second",
+            "Not acceptable examples: Negative correlation / negative gradient; Amount of water decreasing in the tank in seconds; As time increases the volume of water in the tank decreases; It is negative, the volume of litres is going down; It represents the deceleration or changing speed",
+            "Allow amount of water increasing in the tank each second"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 10,
+      "page_end": 10
+    },
+    {
+      "question_ref": "q8",
+      "paper_question_number": "8",
+      "total_marks_for_question": 3,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for process to find the area, eg 720/80 = A or (area =) 720/80 (= 9) or 720/80 = 2x or 720/2 = 80x"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for complete process to find the length, eg \"9\" ÷ 2 or 720 ÷ (2 × 80)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 4.5 oe"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 11,
+      "page_end": 11
+    },
+    {
+      "question_ref": "q9",
+      "paper_question_number": "9",
+      "total_marks_for_question": 6,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for correctly identifying one of LQ (25), Median (34), UQ (42) from the cf graph",
+            "May be implied by one of these values being correctly plotted"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a box drawn and at least three correctly plotted values from 8, 25, 34, 42, 74",
+            "For LQ accept value in range 24 to 26"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a fully correct box plot",
+            "Box can be any height. Accept ends that are marked (eg line, cross, dot) or defined by the ends of the whiskers if clear"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 30 ÷ 100 × 60 (= 18)",
+            "OR Alternative: for reading from the graph at mark = 40 (= 42)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for reading from the graph at cf = 60 – \"18\" (= 40)",
+            "OR Alternative: for (60 – \"42\") ÷ 60 × 100 (= 30) or for 60 – \"42\" (= 18) and 30 ÷ 100 × 60 (= 18)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for correct decision and correct figures"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 11,
+      "page_end": 11
+    },
+    {
+      "question_ref": "q10",
+      "paper_question_number": "10",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for √(25)/5 = 1/2 or √(8)/2 = 1/3 (Accept 5/√(25) = 1/2 for M1 only)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "cao"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for (1/32)^(3/5) or (1/2)^3 or 5√(1/32) or 5√(1/32768)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 1/8 oe",
+            "SCB1 for answer of 8 if M0 scored"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "question_ref": "q11",
+      "paper_question_number": "11",
+      "total_marks_for_question": 5,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for explanation",
+            "Acceptable examples: the sum must be 5 and the product must be 6; she had the sum and the product the wrong way round; it should be the other way around; a and b must be multiplied together to make 6",
+            "Not acceptable examples: the answer should be (x + 3)(x + 2); the product of a and b is not 5"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a correct partial factorisation, eg 2(m² – 1) or (2m – 2)(m + 1) or (m – 1)(2m + 2)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "cao"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a correct partial factorisation, eg x(a + b) – y(a + b) or x(a + b) + y(–a – b) or a(x – y) + b(x – y)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for (a + b)(x – y) oe"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 13,
+      "page_end": 13
+    },
+    {
+      "question_ref": "q12",
+      "paper_question_number": "12",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for start of process to find ratio of lengths of A to B, eg ∛(64) (= 4) or ∛(125) (= 5) or 4 : 5"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for ∛(125) ÷ 2 (= 2.5) oe or (2/\"4\")³ × \"64\" (= 16)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for process to find ratio of areas of A to C, eg \"4\"² : \"2.5\"² (= 16 : 6.25)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 64 : 25 oe in form a : b where a and b are integers"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 13,
+      "page_end": 13
+    },
+    {
+      "question_ref": "q13",
+      "paper_question_number": "13",
+      "total_marks_for_question": 5,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for setting up an equation using volumes, eg (x + 2)(2x – 1)(x – 1) = 2x(x + 3)(x – 3) + 142",
+            "May occur later in the process",
+            "Must use expressions for volumes but these may have been incorrectly expanded and simplified"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for process to find an expanded expression for the area of one face, eg (x + 2)(2x – 1) = 2x² – x + 4x – 2 or 2x² + 3x – 2 or (x + 2)(x – 1) = x² – x + 2x – 2 or x² + x – 2 or (2x – 1)(x – 1) = 2x² – 2x – x + 1 or 2x² – 3x + 1 or 2x(x + 3) = 2x² + 6x or 2x(x – 3) = 2x² – 6x or (x + 3)(x – 3) = x² – 3x + 3x – 9 or x² – 9",
+            "Condone one incorrect term in expansion of two brackets"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a complete process to find a fully expanded expression for the volume of one cuboid, eg 2x³ + 3x² – 2x – 2x² – 3x + 2 or 2x³ + x² – 5x + 2 or 2x³ + 6x² – 6x² – 18x or 2x³ – 18x",
+            "Expression need not be fully simplified, but must be correct"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "(dep P3) for correct rearrangement of the expanded terms in their equation leading to a 3-term quadratic eg x² + 13x – 140 (= 0) or x² + 13x = 140"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "cao"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 14,
+      "page_end": 14
+    },
+    {
+      "question_ref": "q14",
+      "paper_question_number": "14",
+      "total_marks_for_question": 3,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for either sin 30 = 0.5 oe or sin 45 = 1/√2 or √2/2"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for (3√2)/sin 45 × sin 30 = AB oe"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "cao"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 15,
+      "page_end": 15
+    },
+    {
+      "question_ref": "q15",
+      "paper_question_number": "15",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 1/4 OM = a or 1/4 MO = –a or 1/3 ON = b or 1/3 NO = –b or OX = a – b or XO = –a + b or ZY = a – b or YZ = –a + b"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 1/3 XN = –a + b (= 4/3 b – a) oe or 1/4 MN = b – a oe or 1/4 XM = –a + b + a (= 3/4 b – a) oe (Implies 1st P1)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 1/3 XN = –a + b and 1/4 MN = b – a or 4/3 b – a ÷ 3/4 b – a oe"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 4 : 1 oe",
+            "A correct answer with no supportive working gets 0 marks"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 15,
+      "page_end": 15
+    },
+    {
+      "question_ref": "q16",
+      "paper_question_number": "16",
+      "total_marks_for_question": 6,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 15 × √5/√5 or 15√5/√5 – √5"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 3√5 or √45"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "(indep) for writing √75 as 5√3",
+            "This mark can be awarded whenever this is seen, which might be later in the process."
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for method to rationalise the denominator, eg 1/(2-√3) × (2+√3)/(2+√3) or 5√3/(2-√3) × (2+√3)/(2+√3)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "(dep on previous M1) for expanding terms, condone one error in numerator or denominator eg (2√75+3√75)/(4-3) or 1/(2-√3) × (2+√3)/(2+√3) = (2√75+3√75)/(4-3) or 5√3/(2-√3) × (2+√3)/(2+√3) = (10√3+15)/(4-3)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for (32-9√3)/11 oe eg (32+9√3)/11",
+            "Accept a = 32, b = 9, c = 11"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 16,
+      "page_end": 16
+    },
+    {
+      "question_ref": "q17",
+      "paper_question_number": "17",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for angle BAC = 40"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for angle OAC or angle OCA = 10 or angle OAB or angle OBA = 30 (angle AOB = 120 gets M1M1)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for angle ACB = (180 – 30 – 30) ÷ 2 (= 60) or angle OCD = 90 or angle OCB = 50",
+            "Award M3C0 for answer of 100 with no correct appropriate circle theorem"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for angle ACD = 100 and one correct appropriate circle theorem from: alternate segment theorem; angle at the centre is twice the angle at the circumference; the tangent to a circle is perpendicular to the radius",
+            "Underlined words need to be shown",
+            "Reason needs to be linked to their method, which can be implied from correctly identified angles (stated or written on the diagram)"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 17,
+      "page_end": 17
+    },
+    {
+      "question_ref": "q18",
+      "paper_question_number": "18",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for first step to change the subject of y = (3x-5)/4 or x = (3y-5)/4 eg 4y = 3x – 5 or 4x = 3y – 5 (Answer of y = (4x-5)/3 gets M1A0)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "oe"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for h(5) = 1 – 2 × 5 (= – 9) and a clear intention to find g(\"– 9\")",
+            "or for ((1 – 2 × 5) – 1)²",
+            "or for stating gh(x), eg (1 – 2x – 1)² oe"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "cao"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 17,
+      "page_end": 17
+    },
+    {
+      "question_ref": "q19",
+      "paper_question_number": "19",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a process to find a correct product, eg P(A plays C in the final) = 0.6 × 0.2 (= 0.12) or P(A plays D in the final) = 0.6 × 0.8 (= 0.48) or P(A wins against B and C) = 0.6 × 0.5 (= 0.3) or P(A wins against B and D) = 0.6 × 0.3 (= 0.18)",
+            "Could work with fractions",
+            "Could be seen as part of a correct triple product"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a process to find the probability of A winning against C or winning against D in the final, eg P(A wins against C in the final) = \"0.12\" × 0.5 (= 0.06) or P(A wins against D in the final) = \"0.48\" × 0.3 (= 0.144) or P(A wins against C in the final) = \"0.3\" × 0.2 (= 0.06) or P(A wins against D in the final) = \"0.18\" × 0.8 (= 0.144)"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a complete process, eg P(A wins the tournament) = \"0.06\" + \"0.144\""
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for 0.204 oe"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 18,
+      "page_end": 18
+    },
+    {
+      "question_ref": "q20",
+      "paper_question_number": "20",
+      "total_marks_for_question": 4,
+      "criteria": [
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for process to find the value of p, eg p² = 4 – 1 (= 3)",
+            "May occur later in the process"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for a start of a process to find gradient of tangent, eg gradient of normal/radius = 1/p or 1/\"3\" or 1/[p] or for gradient of tangent = –p or –\"3\" or –[p]",
+            "Where [p] is their stated value of p"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "(dep P1) for substituting (\"3\", 1) into y = \"–3\"x + c or for 1 – \"3\" = –(\"3\") – (\"3\") oe or for 1 = –p × p + c or for substituting ([p], 1) into y = –[p]x + c or for substituting (\"3\", 1) into y = –(1/[m])x + c",
+            "Where [m] is clearly their gradient of the normal/radius"
+          ],
+          "spec_refs": []
+        },
+        {
+          "ao": null,
+          "marks": 1,
+          "indicative_content": [
+            "for y = 3x/4 + 3",
+            "A correct answer with no supportive working gets 0 marks"
+          ],
+          "spec_refs": []
+        }
+      ],
+      "page_start": 19,
+      "page_end": 19
+    }
+  ],
+  "slug": "edexcel-1ma11h-mathematics-higher-2024-11",
+  "kind": "ms",
+  "extracted_at_utc": "2026-06-13T20:03:11+00:00",
+  "extractor": {
+    "model": "minimax-m3:cloud",
+    "base_url": "http://127.0.0.1:11434"
+  }
+}

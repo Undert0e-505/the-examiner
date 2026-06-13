@@ -1,0 +1,453 @@
+{
+  "schema_version": 1,
+  "total_marks": 100,
+  "questions": [
+    {
+      "id": "q1.1",
+      "paper_question_number": "0 1 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Complete the word equation for the reaction.\n\ncopper carbonate + sulfuric acid → ____ + ____ + carbon dioxide",
+      "marks_available": 2,
+      "page_start": 2,
+      "page_end": 2
+    },
+    {
+      "id": "q1.2",
+      "paper_question_number": "0 1 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Give one observation the student could make during Step 4 which shows that the copper carbonate is in excess.",
+      "marks_available": 1,
+      "page_start": 2,
+      "page_end": 2
+    },
+    {
+      "id": "q1.3",
+      "paper_question_number": "0 1 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "Give one reason for filtering the mixture in Step 5.",
+      "marks_available": 1,
+      "page_start": 2,
+      "page_end": 2
+    },
+    {
+      "id": "q1.4",
+      "paper_question_number": "0 1 . 4",
+      "section": null,
+      "extract": null,
+      "prompt": "Name the equipment that can be used to warm the filtrate gently in Step 6.",
+      "marks_available": 1,
+      "page_start": 3,
+      "page_end": 3
+    },
+    {
+      "id": "q1.5",
+      "paper_question_number": "0 1 . 5",
+      "section": null,
+      "extract": null,
+      "prompt": "The maximum theoretical mass of the salt that could be produced using 50 cm3 of the sulfuric acid is 12.5 g. The percentage yield of the salt is 92.8%. Calculate the mass of salt actually produced. Use the equation:\n\n% yield = (mass of salt actually produced / maximum theoretical mass of salt that could be produced) × 100",
+      "marks_available": 3,
+      "page_start": 3,
+      "page_end": 3
+    },
+    {
+      "id": "q1.6",
+      "paper_question_number": "0 1 . 6",
+      "section": null,
+      "extract": null,
+      "prompt": "Some salts can be produced by reacting sulfuric acid with a metal. Neither copper nor sodium is used to produce a salt with sulfuric acid. Give one reason why each metal is not used.",
+      "marks_available": 2,
+      "page_start": 4,
+      "page_end": 4
+    },
+    {
+      "id": "q2.1",
+      "paper_question_number": "0 2 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Give one similarity and one difference between the electronic structures of sodium and potassium.",
+      "marks_available": 2,
+      "page_start": 5,
+      "page_end": 5
+    },
+    {
+      "id": "q2.2",
+      "paper_question_number": "0 2 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Group 1 elements react with water. Give two observations made when potassium reacts with water.",
+      "marks_available": 2,
+      "page_start": 5,
+      "page_end": 5
+    },
+    {
+      "id": "q2.3",
+      "paper_question_number": "0 2 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "Potassium hydroxide solution is produced when potassium reacts with water. What is the colour of universal indicator when added to potassium hydroxide solution? Give one reason for your answer.",
+      "marks_available": 2,
+      "page_start": 5,
+      "page_end": 5
+    },
+    {
+      "id": "q2.4",
+      "paper_question_number": "0 2 . 4",
+      "section": null,
+      "extract": null,
+      "prompt": "Plot the data from Table 1 on Figure 1.",
+      "marks_available": 2,
+      "page_start": 6,
+      "page_end": 6
+    },
+    {
+      "id": "q2.5",
+      "paper_question_number": "0 2 . 5",
+      "section": null,
+      "extract": null,
+      "prompt": "Estimate the density (X) of krypton. Use Figure 1 and Table 1.",
+      "marks_available": 1,
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "id": "q2.6",
+      "paper_question_number": "0 2 . 6",
+      "section": null,
+      "extract": null,
+      "prompt": "The elements in Group 7 are called the halogens. A more reactive halogen can displace a less reactive halogen from a solution of its salt. Which combination of solutions will produce a reaction when mixed?",
+      "marks_available": 1,
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "id": "q2.7",
+      "paper_question_number": "0 2 . 7",
+      "section": null,
+      "extract": null,
+      "prompt": "Which of the following describes the trends going down Group 7?",
+      "marks_available": 1,
+      "page_start": 7,
+      "page_end": 7
+    },
+    {
+      "id": "q3.1",
+      "paper_question_number": "0 3 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Name the models of the atom shown in Figure 2.",
+      "marks_available": 2,
+      "page_start": 8,
+      "page_end": 8
+    },
+    {
+      "id": "q3.2",
+      "paper_question_number": "0 3 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Compare model A with the model of the atom used today. Use Figure 2.",
+      "marks_available": 4,
+      "page_start": 8,
+      "page_end": 8
+    },
+    {
+      "id": "q3.3",
+      "paper_question_number": "0 3 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "Chadwick's experiments showed the existence of neutrons in an atom. This led to an understanding of isotopes. Define the term 'isotopes'. Refer to subatomic particles in your answer.",
+      "marks_available": 2,
+      "page_start": 9,
+      "page_end": 9
+    },
+    {
+      "id": "q4.1",
+      "paper_question_number": "0 4 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Draw two lines of best fit on Figure 3. The lines should cross.",
+      "marks_available": 2,
+      "page_start": 11,
+      "page_end": 11
+    },
+    {
+      "id": "q4.2",
+      "paper_question_number": "0 4 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Explain the results shown in Figure 3. Do not refer to anomalous points. Use data from Figure 3.",
+      "marks_available": 4,
+      "page_start": 11,
+      "page_end": 11
+    },
+    {
+      "id": "q4.3",
+      "paper_question_number": "0 4 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "Explain why using a polystyrene cup gives more accurate results than using a glass beaker.",
+      "marks_available": 2,
+      "page_start": 11,
+      "page_end": 11
+    },
+    {
+      "id": "q4.4",
+      "paper_question_number": "0 4 . 4",
+      "section": null,
+      "extract": null,
+      "prompt": "Complete the ionic equation for the reaction between zinc and copper sulfate solution. Include state symbols.\n\nZn(s) + Cu2+(aq) → ( ) + ( )",
+      "marks_available": 2,
+      "page_start": 11,
+      "page_end": 11
+    },
+    {
+      "id": "q4.5",
+      "paper_question_number": "0 4 . 5",
+      "section": null,
+      "extract": null,
+      "prompt": "Calculate the mean highest temperature reached. Include the uncertainty in your answer.",
+      "marks_available": 3,
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "id": "q4.6",
+      "paper_question_number": "0 4 . 6",
+      "section": null,
+      "extract": null,
+      "prompt": "The results show random errors. The student did not make any measuring errors. Suggest one reason for the random errors in this experiment.",
+      "marks_available": 1,
+      "page_start": 12,
+      "page_end": 12
+    },
+    {
+      "id": "q5.1",
+      "paper_question_number": "0 5 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Calcium and chlorine react to produce calcium chloride. Describe what happens to calcium atoms and chlorine atoms when the ionic compound calcium chloride is formed.",
+      "marks_available": 4,
+      "page_start": 14,
+      "page_end": 14
+    },
+    {
+      "id": "q5.2",
+      "paper_question_number": "0 5 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Solid calcium chloride cannot be electrolysed. Give one reason why.",
+      "marks_available": 1,
+      "page_start": 14,
+      "page_end": 14
+    },
+    {
+      "id": "q5.3",
+      "paper_question_number": "0 5 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "Name the product formed at the negative electrode when aqueous calcium chloride solution is electrolysed.",
+      "marks_available": 1,
+      "page_start": 14,
+      "page_end": 14
+    },
+    {
+      "id": "q5.4",
+      "paper_question_number": "0 5 . 4",
+      "section": null,
+      "extract": null,
+      "prompt": "What is the half equation for the reaction at the positive electrode when aqueous calcium chloride solution is electrolysed?",
+      "marks_available": 1,
+      "page_start": 15,
+      "page_end": 15
+    },
+    {
+      "id": "q5.5",
+      "paper_question_number": "0 5 . 5",
+      "section": null,
+      "extract": null,
+      "prompt": "A student investigated the electrolysis of green copper chromate solution. Figure 4 shows the apparatus. Figure 5 shows the results. Copper chromate solution contains the ions Cu2+ and CrO42–. Explain the results shown in Figure 5.",
+      "marks_available": 3,
+      "page_start": 16,
+      "page_end": 17
+    },
+    {
+      "id": "q6.1",
+      "paper_question_number": "0 6 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Write the symbols of the five metals in Table 3 in order of reactivity. Justify your answer.",
+      "marks_available": 3,
+      "page_start": 19,
+      "page_end": 19
+    },
+    {
+      "id": "q6.2",
+      "paper_question_number": "0 6 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "The voltage produced by a chemical cell depends on the concentration of the electrolyte solution. Plan an experiment to investigate how the voltage produced by a chemical cell varies with the concentration of the electrolyte solution. The following substances are available:\n• the metal electrodes in Table 3\n• 1.0 mol/dm3 sodium chloride solution\n• pure water.",
+      "marks_available": 6,
+      "page_start": 19,
+      "page_end": 19
+    },
+    {
+      "id": "q6.3",
+      "paper_question_number": "0 6 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "Describe how a hydrogen fuel cell produces a potential difference.",
+      "marks_available": 2,
+      "page_start": 20,
+      "page_end": 20
+    },
+    {
+      "id": "q7.1",
+      "paper_question_number": "0 7 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Iron is a metal. Describe how iron conducts thermal energy.",
+      "marks_available": 2,
+      "page_start": 21,
+      "page_end": 21
+    },
+    {
+      "id": "q7.2",
+      "paper_question_number": "0 7 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Pure iron is too soft for many uses. Explain why mixing iron with other metals makes alloys which are harder than pure iron.",
+      "marks_available": 3,
+      "page_start": 21,
+      "page_end": 21
+    },
+    {
+      "id": "q7.3",
+      "paper_question_number": "0 7 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "When iron reacts with chlorine, 0.12 mol of iron reacts with 0.18 mol of chlorine (Cl2). Which is the correct equation for the reaction?",
+      "marks_available": 1,
+      "page_start": 22,
+      "page_end": 22
+    },
+    {
+      "id": "q7.4",
+      "paper_question_number": "0 7 . 4",
+      "section": null,
+      "extract": null,
+      "prompt": "The most common oxides of iron are Fe2O3 and Fe3O4. What is the ratio of the numbers of ions in Fe3O4?",
+      "marks_available": 1,
+      "page_start": 22,
+      "page_end": 22
+    },
+    {
+      "id": "q7.5",
+      "paper_question_number": "0 7 . 5",
+      "section": null,
+      "extract": null,
+      "prompt": "Calculate the percentage (%) by mass of iron in Fe3O4. Relative atomic masses (Ar): O = 16 Fe = 56",
+      "marks_available": 3,
+      "page_start": 23,
+      "page_end": 23
+    },
+    {
+      "id": "q7.6",
+      "paper_question_number": "0 7 . 6",
+      "section": null,
+      "extract": null,
+      "prompt": "Fe2O3 reacts with carbon to produce carbon dioxide. The equation for the reaction is:\n\n2 Fe2O3(s) + 3 C(s) → 4 Fe(s) + 3 CO2(g)\n\nCalculate the volume of carbon dioxide gas at room temperature and pressure that is produced from 40.0 kg of Fe2O3 using excess carbon. Relative formula mass (Mr): Fe2O3 = 160. The volume of 1 mole of any gas at room temperature and pressure is 24 dm3.",
+      "marks_available": 5,
+      "page_start": 23,
+      "page_end": 23
+    },
+    {
+      "id": "q8.1",
+      "paper_question_number": "0 8 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Explain why propane has a low boiling point.",
+      "marks_available": 3,
+      "page_start": 24,
+      "page_end": 24
+    },
+    {
+      "id": "q8.2",
+      "paper_question_number": "0 8 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Propane reacts with oxygen to produce carbon dioxide and water. The reaction is exothermic. Figure 8 shows four reaction profiles. Which is the correct reaction profile and labels for the reaction between propane and oxygen?",
+      "marks_available": 1,
+      "page_start": 25,
+      "page_end": 25
+    },
+    {
+      "id": "q8.3",
+      "paper_question_number": "0 8 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "Figure 9 shows the displayed formula equation for the reaction between propane and oxygen. The overall energy change of this exothermic reaction is 2219 kJ/mol. Table 4 shows the bond energies of the bonds in the reaction. Calculate the bond energy of the C — H bond (X).",
+      "marks_available": 5,
+      "page_start": 26,
+      "page_end": 26
+    },
+    {
+      "id": "q9.1",
+      "paper_question_number": "0 9 . 1",
+      "section": null,
+      "extract": null,
+      "prompt": "Acids can be either weak or strong. What is meant by 'a weak acid'?",
+      "marks_available": 2,
+      "page_start": 27,
+      "page_end": 27
+    },
+    {
+      "id": "q9.2",
+      "paper_question_number": "0 9 . 2",
+      "section": null,
+      "extract": null,
+      "prompt": "Explain what happens to the pH of an acid as the acid is diluted with water.",
+      "marks_available": 2,
+      "page_start": 27,
+      "page_end": 27
+    },
+    {
+      "id": "q9.3",
+      "paper_question_number": "0 9 . 3",
+      "section": null,
+      "extract": null,
+      "prompt": "A student does a titration to find the volume of acid needed to neutralise an alkali. The student fills a burette with the acid. Give three more steps the student must do before adding the acid to the alkali from the burette. You should name any equipment used.",
+      "marks_available": 3,
+      "page_start": 28,
+      "page_end": 28
+    },
+    {
+      "id": "q9.4",
+      "paper_question_number": "0 9 . 4",
+      "section": null,
+      "extract": null,
+      "prompt": "The student titrated a solution containing 0.0045 moles of sodium hydroxide with 0.15 mol/dm3 hydrochloric acid. The equation for the reaction is:\n\nNaOH + HCl → NaCl + H2O\n\nCalculate the volume of hydrochloric acid in cm3 needed in the titration.",
+      "marks_available": 2,
+      "page_start": 28,
+      "page_end": 28
+    },
+    {
+      "id": "q9.5",
+      "paper_question_number": "0 9 . 5",
+      "section": null,
+      "extract": null,
+      "prompt": "A calcium atom is larger than a magnesium atom. Explain why calcium reacts more vigorously than magnesium with hydrochloric acid of the same concentration.",
+      "marks_available": 3,
+      "page_start": 29,
+      "page_end": 29
+    }
+  ],
+  "slug": "aqa-84621h-chemistry-higher-2024-05",
+  "kind": "qp",
+  "extracted_at_utc": "2026-06-13T19:32:29+00:00",
+  "extractor": {
+    "model": "minimax-m3:cloud",
+    "base_url": "http://127.0.0.1:11434"
+  }
+}

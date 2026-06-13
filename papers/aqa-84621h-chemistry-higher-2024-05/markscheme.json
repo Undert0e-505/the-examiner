@@ -1,0 +1,935 @@
+{
+  "schema_version": 1,
+  "marks": [
+    {
+      "question_ref": "q1",
+      "paper_question_number": "01",
+      "total_marks_for_question": 10,
+      "criteria": [
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "copper sulfate",
+            "allow CuSO4"
+          ],
+          "spec_refs": [
+            "4.4.2.2",
+            "RPA1"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "water",
+            "allow H2O"
+          ],
+          "spec_refs": [
+            "4.4.2.3",
+            "RPA1"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "solid remains (in the mixture)",
+            "or",
+            "no more effervescence / bubbles / fizzing",
+            "ignore references to colours",
+            "allow copper carbonate remains (in the mixture)"
+          ],
+          "spec_refs": [
+            "4.4.2.3",
+            "RPA1"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "to remove copper carbonate",
+            "allow to remove excess (copper carbonate)"
+          ],
+          "spec_refs": [
+            "4.1.1.2",
+            "4.4.2.3",
+            "RPA1"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "electric heater",
+            "or",
+            "water bath",
+            "ignore Bunsen burner"
+          ],
+          "spec_refs": [
+            "4.4.2.3",
+            "RPA1"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 3,
+          "indicative_content": [
+            "92.8 = mass produced / 12.5 × 100",
+            "(mass produced) = 92.8/100 × 12.5",
+            "= 11.6 (g)",
+            "allow mass produced = (% yield × max theoretical mass) / 100"
+          ],
+          "spec_refs": [
+            "4.3.3.1"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "(copper) does not react with (sulfuric) acid",
+            "allow is unreactive",
+            "allow will not displace hydrogen",
+            "allow is below hydrogen in the reactivity series",
+            "ignore is not reactive enough"
+          ],
+          "spec_refs": [
+            "4.4.1.2",
+            "4.4.2.3"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "(sodium) could explode",
+            "or",
+            "could get too hot",
+            "allow (the reaction is) dangerous"
+          ],
+          "spec_refs": [
+            "4.4.1.2",
+            "4.4.2.3"
+          ]
+        }
+      ],
+      "page_start": 7,
+      "page_end": 8
+    },
+    {
+      "question_ref": "q2",
+      "paper_question_number": "02",
+      "total_marks_for_question": 11,
+      "criteria": [
+        {
+          "ao": "AO1",
+          "marks": 2,
+          "indicative_content": [
+            "(similarity) both have one outer (shell) electron",
+            "(difference) sodium has 3 shells but potassium has 4 shells",
+            "allow energy level for shell",
+            "allow same number of outer (shell) electrons",
+            "allow potassium has more shells",
+            "allow (different) number of shells"
+          ],
+          "spec_refs": [
+            "4.1.2.1"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 2,
+          "indicative_content": [
+            "any two from: effervescence / bubbles / fizzing",
+            "(potassium) floats",
+            "(potassium) moves around",
+            "(potassium) becomes smaller",
+            "(potassium) melts",
+            "flame",
+            "explosion",
+            "ignore gas produced",
+            "allow (potassium) forms a ball",
+            "ignore colour of flame"
+          ],
+          "spec_refs": [
+            "4.1.2.5",
+            "4.4.1.2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "blue / violet / purple"
+          ],
+          "spec_refs": [
+            "4.1.2.5",
+            "4.4.2.4"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "(the solution is) alkaline",
+            "allow (the solution) contains OH− (ions)",
+            "allow (the solution) contains hydroxide ions",
+            "allow the solution is basic"
+          ],
+          "spec_refs": [
+            "4.1.2.5",
+            "4.4.2.4"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 2,
+          "indicative_content": [
+            "all five points correctly plotted",
+            "allow a tolerance of ± ½ a small square",
+            "allow 1 mark for three or four points correctly plotted"
+          ],
+          "spec_refs": [
+            "4.1.2.4"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "3.4 (mg/cm3)",
+            "allow a value in the range 3.0 to 3.8 (mg/cm3)"
+          ],
+          "spec_refs": [
+            "4.1.2.4"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "chlorine and potassium bromide"
+          ],
+          "spec_refs": [
+            "4.1.2.6"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "relative molecular mass increases and boiling point increases"
+          ],
+          "spec_refs": [
+            "4.1.2.6"
+          ]
+        }
+      ],
+      "page_start": 9,
+      "page_end": 10
+    },
+    {
+      "question_ref": "q3",
+      "paper_question_number": "03",
+      "total_marks_for_question": 8,
+      "criteria": [
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "(model A) plum pudding",
+            "allow Thomson (model)"
+          ],
+          "spec_refs": [
+            "4.1.1.3"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "(model B) Bohr",
+            "allow nuclear (model)",
+            "allow planetary (model)",
+            "allow Rutherford-Bohr (model)"
+          ],
+          "spec_refs": [
+            "4.1.1.3"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 4,
+          "indicative_content": [
+            "Level 2: Scientifically relevant features are identified; the way(s) in which they are similar / different is made clear and (where appropriate) the magnitude of the similarity / difference is noted. (3–4 marks)",
+            "Level 1: Relevant features are identified and differences noted. (1–2 marks)",
+            "No relevant content (0 marks)",
+            "Indicative content - Similarities:",
+            "• both contain electrons",
+            "• both are neutral overall",
+            "Differences:",
+            "• model A has no nucleus / the model used today has a nucleus",
+            "• model A has no protons / the model used today has protons",
+            "• model A has no neutrons / the model used today has neutrons",
+            "• model A has positive charge spread throughout the atom / model A is a ball of positive charge",
+            "• the model used today has the positive charge in the centre",
+            "• model A the electrons are distributed randomly",
+            "• the model used today has electrons in shells / energy levels",
+            "• the mass was spread throughout model A",
+            "• the mass is concentrated at the centre of the model used today",
+            "• model A does not have empty space",
+            "• model used today is mostly empty space"
+          ],
+          "spec_refs": [
+            "4.1.1.3"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "atoms with the same number of protons",
+            "allow atoms of the same element",
+            "allow atoms with the same atomic number",
+            "ignore references to electrons"
+          ],
+          "spec_refs": [
+            "4.1.1.5"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "with different numbers of neutrons"
+          ],
+          "spec_refs": [
+            "4.1.1.5"
+          ]
+        }
+      ],
+      "page_start": 11,
+      "page_end": 13
+    },
+    {
+      "question_ref": "q4",
+      "paper_question_number": "04",
+      "total_marks_for_question": 14,
+      "criteria": [
+        {
+          "ao": "AO3",
+          "marks": 2,
+          "indicative_content": [
+            "line of best fit using the first five points",
+            "line of best fit using the last four points",
+            "max 1 mark if the lines do not intersect"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "the temperature rises because the reaction is exothermic",
+            "or",
+            "the temperature rises because energy is transferred to the surroundings",
+            "allow heat for energy"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "until 0.8 g (zinc) is added",
+            "allow a tolerance of ± ½ a small square",
+            "allow until the temperature reaches 47 °C",
+            "allow a correctly determined value for mass of zinc or temperature from the intersection of drawn lines of best fit"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "(so) there is no additional reaction",
+            "allow (when) the reaction has finished"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "(because) zinc is in excess",
+            "or",
+            "(because) copper sulfate is used up"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "polystyrene is a better (thermal) insulator"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "(so) there is less energy transfer to the surroundings",
+            "allow converse statements for glass",
+            "allow (so) less energy is lost (to the surroundings)",
+            "allow heat for energy"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 2,
+          "indicative_content": [
+            "Zn(s) + Cu2+(aq) → Zn2+(aq) + Cu(s)",
+            "allow 1 mark for Zn2+ + Cu"
+          ],
+          "spec_refs": [
+            "4.1.1.1",
+            "4.2.2.2",
+            "4.4.1.4"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 3,
+          "indicative_content": [
+            "(mean highest temperature =) (37.6 + 37.2 + 37.8 + 37.4) / 4",
+            "= 37.5 (ºC)",
+            "37.5 (ºC) ± 0.3 (ºC)",
+            "allow (mean highest temperature =) 150 / 4"
+          ],
+          "spec_refs": [
+            "4.3.1.4"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "any one from: starting temperature may be different",
+            "inconsistent stirring",
+            "ignore room temperature",
+            "allow inconsistent use of a lid"
+          ],
+          "spec_refs": [
+            "4.5.1.1",
+            "RPA4"
+          ]
+        }
+      ],
+      "page_start": 14,
+      "page_end": 15
+    },
+    {
+      "question_ref": "q5",
+      "paper_question_number": "05",
+      "total_marks_for_question": 10,
+      "criteria": [
+        {
+          "ao": "AO2",
+          "marks": 4,
+          "indicative_content": [
+            "each calcium atom loses two electrons",
+            "(and) each chlorine atom gains one electron",
+            "(so) one calcium atom reacts with two chlorine atoms",
+            "(to form) Ca2+ ions and Cl- ions",
+            "or",
+            "(to form) calcium ion(s) and chloride ion(s)",
+            "allow 1 mark for calcium atoms lose electrons and chlorine atoms gain electrons",
+            "allow (to form) ions with full outer shells",
+            "allow energy level for shell"
+          ],
+          "spec_refs": [
+            "4.2.1.2"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "the ions cannot move",
+            "allow the ions are in fixed positions"
+          ],
+          "spec_refs": [
+            "4.2.2.3",
+            "4.4.3.1",
+            "4.4.3.2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "hydrogen",
+            "allow H2"
+          ],
+          "spec_refs": [
+            "4.4.3.4",
+            "RPA3"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "2 Cl– → Cl2 + 2 e–"
+          ],
+          "spec_refs": [
+            "4.1.1.1",
+            "4.4.3.4",
+            "4.4.3.5",
+            "RPA3"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "Cu2+ / copper ions are blue",
+            "and",
+            "CrO42– / chromate ions are yellow"
+          ],
+          "spec_refs": [
+            "4.4.3.1"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "(because) Cu2+ / copper ions move to the negative electrode",
+            "allow cathode for negative electrode",
+            "allow attraction for movement"
+          ],
+          "spec_refs": [
+            "4.4.3.1"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "(and also) CrO42– / chromate ions move to the positive electrode",
+            "allow anode for positive electrode",
+            "allow attraction for movement"
+          ],
+          "spec_refs": [
+            "4.4.3.1"
+          ]
+        }
+      ],
+      "page_start": 16,
+      "page_end": 17
+    },
+    {
+      "question_ref": "q6",
+      "paper_question_number": "06",
+      "total_marks_for_question": 11,
+      "criteria": [
+        {
+          "ao": "AO3",
+          "marks": 2,
+          "indicative_content": [
+            "(most reactive) Mg, Zn, Ni, Cu, Ag (least reactive)",
+            "allow name of metal for symbol",
+            "allow 1 mark for (most reactive) Mg, Zn, Ni or Ni, Cu, Ag (least reactive)"
+          ],
+          "spec_refs": [
+            "4.4.1.2",
+            "4.5.2.1"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 1,
+          "indicative_content": [
+            "(justification) the higher the (positive) voltage the more reactive the metal",
+            "allow the most reactive (metal) has the highest (positive) voltage",
+            "allow the least reactive (metal) has the most negative voltage",
+            "allow the greater the difference in reactivity the greater the (magnitude of the) voltage"
+          ],
+          "spec_refs": [
+            "4.4.1.2",
+            "4.5.2.1"
+          ]
+        },
+        {
+          "ao": "AO3",
+          "marks": 6,
+          "indicative_content": [
+            "Level 3: The method would lead to the production of a valid outcome. The key steps are identified and logically sequenced. (5–6 marks)",
+            "Level 2: The method would not necessarily lead to a valid outcome. Most steps are identified, but the method is not fully logically sequenced. (3–4 marks)",
+            "Level 1: The method would not lead to a valid outcome. Some relevant steps are identified, but links are not made clear. (1–2 marks)",
+            "No relevant content (0 marks)",
+            "Indicative content:",
+            "• set up cell with sodium chloride solution as the electrolyte",
+            "• use two different metals as electrodes",
+            "• measure voltage",
+            "• repeat at different concentrations of electrolyte solution",
+            "• by diluting the sodium chloride solution with water",
+            "• using measured volumes of sodium chloride solution and water",
+            "• measure volumes with a measuring cylinder (allow pipette / burette)",
+            "• use the same two metals each time",
+            "• use the same volume of electrolyte solution"
+          ],
+          "spec_refs": [
+            "4.3.4",
+            "4.5.2.1"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "hydrogen is oxidised (electrochemically)",
+            "allow hydrogen loses electrons",
+            "ignore references to electrodes"
+          ],
+          "spec_refs": [
+            "4.5.2.2"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "to produce water"
+          ],
+          "spec_refs": [
+            "4.5.2.2"
+          ]
+        }
+      ],
+      "page_start": 18,
+      "page_end": 19
+    },
+    {
+      "question_ref": "q7",
+      "paper_question_number": "07",
+      "total_marks_for_question": 15,
+      "criteria": [
+        {
+          "ao": "AO1",
+          "marks": 2,
+          "indicative_content": [
+            "(thermal) energy is transferred",
+            "by delocalised electrons",
+            "allow heat is transferred"
+          ],
+          "spec_refs": [
+            "4.2.1.5",
+            "4.2.2.8"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 3,
+          "indicative_content": [
+            "(the alloy / mixture has) different sized atoms",
+            "(so the) layers are distorted",
+            "(so the) layers cannot easily slide",
+            "allow (positive / metal) ions for atoms throughout",
+            "allow (so the) atoms cannot slide over each other"
+          ],
+          "spec_refs": [
+            "4.2.2.7"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "2 Fe + 3 Cl2 → 2 FeCl3"
+          ],
+          "spec_refs": [
+            "4.3.1.1",
+            "4.3.2.3"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "1 Fe2+ : 2 Fe3+ : 4 O2–"
+          ],
+          "spec_refs": [
+            "4.4.2.2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 3,
+          "indicative_content": [
+            "(Mr Fe3O4 =) 232",
+            "(% Fe =) (3 × 56) / 232 × 100",
+            "= 72.4 (%)",
+            "allow 168 / 232 × 100",
+            "allow correct use of an incorrectly determined Mr using the values of Ar given in the question",
+            "allow 72.41379 correctly rounded to at least 2 significant figures"
+          ],
+          "spec_refs": [
+            "4.3.1.2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 5,
+          "indicative_content": [
+            "(40.0 kg =) 40 000 (g)",
+            "(moles Fe2O3 = 40 000 / 160 =) 250",
+            "(moles CO2 = 250 × 3 / 2 =) 375",
+            "(volume of CO2 =) 375 × 24",
+            "= 9000 (dm3)",
+            "a maximum of 4 marks can be awarded for a method which determines and uses the volume of iron oxide as a gas",
+            "allow correct use of an incorrectly converted or unconverted mass",
+            "allow correct use of an incorrectly determined number of moles of Fe2O3",
+            "allow correct use of an incorrectly determined number of moles of CO2"
+          ],
+          "spec_refs": [
+            "4.3.2.1",
+            "4.3.2.2"
+          ]
+        }
+      ],
+      "page_start": 20,
+      "page_end": 21
+    },
+    {
+      "question_ref": "q8",
+      "paper_question_number": "08",
+      "total_marks_for_question": 9,
+      "criteria": [
+        {
+          "ao": "AO1",
+          "marks": 3,
+          "indicative_content": [
+            "propane is a small molecule",
+            "(so) the forces between molecules are weak",
+            "or",
+            "(so) the intermolecular forces are weak",
+            "(which) require little energy to overcome",
+            "allow propane is a simple molecule",
+            "do not accept covalent bonds are weak",
+            "do not accept answers in terms of breaking covalent bonds"
+          ],
+          "spec_refs": [
+            "4.2.1.4",
+            "4.2.2.1",
+            "4.2.2.4"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "B"
+          ],
+          "spec_refs": [
+            "4.5.1.2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 5,
+          "indicative_content": [
+            "(bonds broken = 2(347) + 8X + 5(498) =) 3184 + 8X",
+            "(bonds made = 6(805) + 8(464) =) 8542",
+            "(energy released = bonds made – bonds broken =) 2219 = 8542 – (3184 + 8X)",
+            "(8X =) 3139 (kJ/mol)",
+            "(X =) 392 (kJ/mol)",
+            "allow correct use of incorrectly determined values of bonds broken and/or bonds made",
+            "allow correct evaluation of the expression energy released = bonds broken – bonds made",
+            "allow 392.375 correctly rounded to at least 3 significant figures",
+            "allow correct use of an incorrectly determined value for 8X"
+          ],
+          "spec_refs": [
+            "4.5.1.3"
+          ]
+        }
+      ],
+      "page_start": 22,
+      "page_end": 23
+    },
+    {
+      "question_ref": "q9",
+      "paper_question_number": "09",
+      "total_marks_for_question": 12,
+      "criteria": [
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "(an acid which) is partially ionised",
+            "allow (an acid which) is partially dissociated"
+          ],
+          "spec_refs": [
+            "4.4.2.4",
+            "4.4.2.6"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "in aqueous solution",
+            "allow (when dissolved) in water",
+            "MP2 is dependent on the award of MP1"
+          ],
+          "spec_refs": [
+            "4.4.2.4",
+            "4.4.2.6"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "pH increases"
+          ],
+          "spec_refs": [
+            "4.4.2.6"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "(because) the concentration of hydrogen ions decreases"
+          ],
+          "spec_refs": [
+            "4.4.2.6"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 1,
+          "indicative_content": [
+            "use a (volumetric) pipette to add the alkali"
+          ],
+          "spec_refs": [
+            "4.4.2.5",
+            "RPA2"
+          ]
+        },
+        {
+          "ao": "AO1",
+          "marks": 2,
+          "indicative_content": [
+            "any two from: into a conical flask",
+            "add an indicator (to the alkali)",
+            "take the initial burette reading",
+            "use a white tile (under a conical flask)",
+            "ignore beaker",
+            "allow named indicator",
+            "do not accept add universal indicator"
+          ],
+          "spec_refs": [
+            "4.4.2.5",
+            "RPA2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 2,
+          "indicative_content": [
+            "(volume of HCl = 0.0045 / 0.15) = 0.030 (dm3)",
+            "(conversion 0.030 dm3 =) 30 (cm3)",
+            "alternative approach: (concentration = 0.15 / 1000 =) 0.00015 (mol/cm3)",
+            "(volume = 0.0045 / 0.00015 =) 30 (cm3)",
+            "allow correct conversion of an incorrectly determined volume in dm3",
+            "allow correct use of an incorrectly determined concentration in mol/cm3"
+          ],
+          "spec_refs": [
+            "4.3.4",
+            "4.4.2.5",
+            "RPA2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "(calcium's) outer shell / electrons are further from the nucleus",
+            "allow converse arguments in terms of magnesium",
+            "allow energy level for shell",
+            "allow calcium has more shells",
+            "ignore calcium atoms are larger"
+          ],
+          "spec_refs": [
+            "4.1.2.3",
+            "4.2.1.2",
+            "4.4.1.2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "(so) the outer electrons are less strongly attracted to the nucleus",
+            "allow (so) the outer electrons are more shielded from the nucleus"
+          ],
+          "spec_refs": [
+            "4.1.2.3",
+            "4.2.1.2",
+            "4.4.1.2"
+          ]
+        },
+        {
+          "ao": "AO2",
+          "marks": 1,
+          "indicative_content": [
+            "(so) positive ions are formed more easily",
+            "allow (so) electrons are more easily lost"
+          ],
+          "spec_refs": [
+            "4.1.2.3",
+            "4.2.1.2",
+            "4.4.1.2"
+          ]
+        }
+      ],
+      "page_start": 24,
+      "page_end": 25
+    }
+  ],
+  "slug": "aqa-84621h-chemistry-higher-2024-05",
+  "kind": "ms",
+  "extracted_at_utc": "2026-06-13T19:46:12+00:00",
+  "extractor": {
+    "model": "minimax-m3:cloud",
+    "base_url": "http://127.0.0.1:11434"
+  }
+}
