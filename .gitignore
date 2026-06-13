@@ -10,6 +10,14 @@
 # to a KVdb bucket). Commit them so the bucket id is reproducible
 # across machines and survives re-indexing.
 
+# Question papers and mark schemes (PDFs).
+# Copyright belongs to the awarding bodies (AQA, Pearson Edexcel, OCR,
+# eduqas, WJEC). The PDFs are kept in the local working tree and on
+# your machines (so index_papers.py and extract_questions.py can read
+# them), but they do not ship with the repo. Re-seed from
+# D:\AIProjects\Aaron\Jimothy Share\Will-papers\ on a fresh clone.
+papers/*.pdf
+
 # Local-only paths and per-paper extracted text
 papers/*/extracted.txt
 
@@ -40,5 +48,7 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Intentionally NOT ignored: papers/*.pdf, intake/*/photos, index/papers.json,
-# calibration/*.md, src/, prompts/. These are the actual data.
+# Intentionally NOT ignored: index/papers.json, calibration/*.md, src/,
+# prompts/. The KVdb bucket ids in papers/*/kvdb-bucket.txt are also
+# committed (the bucket is anonymous-PUT; see SETUP.md §3 for the
+# "treat as untrusted" rule).

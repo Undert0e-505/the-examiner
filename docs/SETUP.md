@@ -98,18 +98,27 @@ The pages content (`pages/assessments/<batch>.html`) is also not
 written yet — that's Phase 3's `src/publish.py`. Even after enabling
 Pages, the site will be empty until the publisher is built.
 
-**Note: private repo is not a blocker.** Pages is fully supported on
-private repos; it serves the site to a public URL (or, on Enterprise,
-to org members only). The only thing private-vs-public changes is who
-can see the site, not whether Pages works.
+**Repo must be public on a free personal account.** As of
+2026-06-13 the repo is private, and the Pages settings page shows
+"Upgrade or make this repository public to enable Pages" — the
+visibility is a hard gate, not a warning. The PDFs are
+copyright the awarding bodies (AQA, Pearson Edexcel) and are
+gitignored (see `.gitignore`); the repo is made public for
+Phase 3's static site, not for the PDFs. The KVdb bucket ids
+in `papers/*/kvdb-bucket.txt` are also public, but the bucket
+itself is anonymous-PUT and the polling script treats
+incoming data as untrusted (see §3).
 
-**Alternative path (skipped for now):** switch to
-`actions/configure-pages` with `enablement: true` + a non-`GITHUB_TOKEN`
-PAT in a repo secret. This makes the workflow enable Pages itself.
-Costs: one extra secret to manage; PAT lives in GitHub Secrets
-(instead of just Windows Credential Manager). We chose the UI path
-because the human-in-the-loop "I, a human, approve this repo serving
-content on the public internet" gate is worth one click.
+**Alternative paths (skipped):**
+  * Pay for GitHub Enterprise and keep the repo private — works,
+    not worth the cost.
+  * Self-host the static site (Cloudflare Pages, S3 + CloudFront,
+    a Pi on the LAN). More work in Phase 3.
+  * Use `actions/configure-pages` with `enablement: true` + a
+    non-`GITHUB_TOKEN` PAT in a repo secret. This makes the
+    workflow enable Pages itself. Costs: one extra secret to
+    manage; PAT lives in GitHub Secrets (instead of just
+    Windows Credential Manager).
 
 ## 5. Will's email
 
@@ -166,8 +175,14 @@ Windows Credential Manager, used by `git push`.
 - [x] `minimax-m3:cloud` pulled into local Ollama, working as the
       Phase 2 LLM. Run with `--timeout 600 --max-retries 1`.
 - [x] Will's email confirmed (`WillJOakley@gmail.com`)
-- [ ] Pages enabled in Settings (deferred — see §4; the
-      publisher script is Phase 3)
+- [x] PDFs gitignored (2026-06-13). `git rm --cached papers/*.pdf`,
+      `papers/*.pdf` in `.gitignore`. PDFs stay on disk; the repo
+      stops carrying them.
+- [ ] Repo visibility flipped to public (see §4). Required for
+      Pages to work on a free personal account. Pending API call
+      at end of session 2026-06-13.
+- [ ] Pages enabled in Settings (see §4; the publisher script is
+      Phase 3)
 - [ ] Telegram bot wired to `intake/` (deferred — Phase 3)
 - [ ] `OPENAI_API_KEY` in repo secret + Credential Manager
       (deferred — Phase 3)
