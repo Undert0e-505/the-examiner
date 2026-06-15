@@ -85,8 +85,17 @@ GIT_TOKEN_HELPER_HINT = (
 
 # ---------- Trigger parsing ----------
 
+# Regex: /mark <slug> [photos=N] [order=...]
+# OR:    /mark [N] [pages|photos|pictures]
+# OR:    /mark
+# When the slug and order are absent (auto-discover mode), the
+# orchestrator picks the N most recent photos in the gateway cache
+# and runs the discovery pass.
 TRIGGER_RE = re.compile(
-    r"^/mark\s+(?P<slug>[a-z0-9-]+)"
+    r"^/mark"
+    r"(?:\s+(?P<slug>[a-z0-9-]+))?"
+    r"(?:\s+(?P<count>\d+))?"
+    r"(?:\s+(?P<noun>pages|photos|pictures))?"
     r"(?:\s+photos=(?P<photos>\d+))?"
     r"(?:\s+order=(?P<order>[\d,\s-]+))?"
     r"\s*$",
@@ -98,34 +107,79 @@ def parse_trigger(message: str) -> dict:
     """Parse a Telegram /mark message into a trigger dict.
 
     Returns:
-        {"slug": str, "photos": int|None, "order": list[int]|None}
+        {
+          "slug": str | None,        # canonical slug, or None for auto-discover
+          "photos": int | None,      # explicit photo count, or None
+          "order": list[int] | None, # explicit page order, or None
+          "auto_discover": bool,     # True if discovery pass is needed
+          "count": int | None,       # N from "/mark N pages", or None
+        }
 
-    The caller is responsible for blocking on missing photos/order
-    and asking the user. parse_trigger is purely a regex-based
-    parser — it doesn't talk to Telegram, doesn't ask, doesn't fail
-    on missing fields. It returns what it found.
+    parse_trigger is purely a regex-based parser — it doesn't talk
+    to Telegram, doesn't ask, doesn't fail on missing fields. It
+    returns what it found. The caller is responsible for blocking
+    on missing required fields and asking the user.
 
     Examples:
-        "/mark aqa-84621h-chemistry-higher-2024-05"
-            -> {"slug": "aqa-...", "photos": None, "order": None}
-        "/mark aqa-84621h-chemistry-higher-2024-05 photos=11"
-            -> {"slug": "aqa-...", "photos": 11, "order": None}
-        "/mark aqa-84621h-chemistry-higher-2024-05 photos=11 order=11,12,14,15,17,19,20,21,22,23,24"
-            -> {"slug": "aqa-...", "photos": 11, "order": [11, 12, 14, 15, 17, 19, 20, 21, 22, 23, 24]}
+        "/mark aqa-84621h-chemistry-higher-2024-05 photos=10 order=2,3,4"
+            -> {"slug": "aqa-...", "photos": 10, "order": [2,3,4],
+                "auto_discover": False, "count": None}
+        "/mark 26 pages"
+            -> {"slug": None, "photos": None, "order": None,
+                "auto_discover": True, "count": 26}
+        "/mark"
+            -> {"slug": None, "photos": None, "order": None,
+                "auto_discover": True, "count": None}
+        "/mark 26 photos photos=26"
+            -> {"slug": None, "photos": 26, "order": None,
+                "auto_discover": True, "count": 26}
+                # the explicit photos=26 wins; the "26 photos" form
+                # is treated as a count hint that matches.
     """
     m = TRIGGER_RE.match(message.strip())
     if not m:
         raise ValueError(
-            f"Could not parse trigger: {message!r}. Expected: "
-            f"'/mark <slug> [photos=N] [order=a,b,c,...]'"
+            f"Could not parse trigger: {message!r}. Expected one of: "
+            f"'/mark <slug> [photos=N] [order=a,b,c,...]' "
+            f"or '/mark [N] [pages|photos|pictures]' "
+            f"or '/mark' (auto-discover the latest batch)."
         )
     slug = m.group("slug")
-    photos = int(m.group("photos")) if m.group("photos") else None
+    count_raw = m.group("count")
+    noun = (m.group("noun") or "").lower()
+    photos_raw = m.group("photos")
     order_raw = m.group("order")
+    count = int(count_raw) if count_raw else None
+    photos = int(photos_raw) if photos_raw else None
     order = None
     if order_raw:
         order = [int(x) for x in re.findall(r"\d+", order_raw)]
-    return {"slug": slug, "photos": photos, "order": order}
+
+    # If the slug is purely numeric, treat it as a count, not a
+    # slug. (Otherwise "/mark 26 pages" parses as slug="26", which
+    # is wrong: the user said "26 pages", not "the slug 26".)
+    if slug is not None and slug.isdigit():
+        if count is None:
+            count = int(slug)
+        slug = None
+
+    # Decision: auto-discover iff no slug and no explicit order.
+    # If the user gave photos=N without a slug, that's still
+    # auto-discover (we discover the slug, and N is a hint for
+    # how many photos to pull from the cache).
+    auto_discover = (slug is None) and (order is None)
+
+    # If the user said "N pages" and ALSO said "photos=M" where
+    # M != N, that's a conflict — caller should warn but we'll
+    # trust photos=M as the explicit override.
+    return {
+        "slug": slug,
+        "photos": photos,
+        "order": order,
+        "auto_discover": auto_discover,
+        "count": count,
+        "noun": noun,
+    }
 
 
 # ---------- Photo discovery ----------
@@ -146,6 +200,98 @@ def discover_photos_for_paper(slug: str) -> list[Path]:
     the inbound message metadata before calling run_pipeline.
     """
     return []
+
+
+# ---------- Auto-discover (paper + page order) ----------
+
+def pick_latest_photos(count: int | None, cache_dir: Path) -> list[Path]:
+    """Return the most recent photos in the gateway cache, in
+    receipt order (oldest-first by LastWriteTime). If count is
+    None, returns all photos currently in the cache.
+
+    This is the photo-source for auto-discover mode. The
+    assumption is that the user just sent a Telegram batch and
+    these are the new photos; the older photos in the cache are
+    from previous runs of the same paper and are already in
+    intake/<slug>/.
+    """
+    if not cache_dir.is_dir():
+        raise FileNotFoundError(f"gateway cache not found: {cache_dir}")
+    all_photos = [
+        p for p in cache_dir.glob("*.jpg") if p.is_file()
+    ]
+    if not all_photos:
+        raise FileNotFoundError(f"no photos in gateway cache: {cache_dir}")
+    all_photos.sort(key=lambda p: p.stat().st_mtime)  # oldest-first
+    if count is not None:
+        if count > len(all_photos):
+            raise FileNotFoundError(
+                f"expected {count} photos in cache, found {len(all_photos)}"
+            )
+        return all_photos[-count:]
+    return all_photos
+
+
+def auto_discover(slug: str | None, photos_hint: int | None) -> dict:
+    """Run the discovery pass: pick the latest N photos from the
+    cache, run Codex to identify the paper + page order, rename
+    the photos in the real repo's intake/<slug>/, and return
+    the discovered slug + page_order.
+
+    Returns a dict with the same shape as the run_pipeline result
+    field for a discovered batch:
+        {
+          "slug": str,
+          "page_order": list[int],
+          "cover_paper_code": str,
+          "cover_text": str,
+          "confidence": str,
+        }
+
+    Raises ValueError if the discovery result doesn't match a
+    known paper, or if no photos are available.
+    """
+    import discover_batch as db
+    cache_dir = GATEWAY_CACHE
+    photo_paths = pick_latest_photos(photos_hint, cache_dir)
+    print(f"Auto-discover: picked {len(photo_paths)} photos from {cache_dir}", flush=True)
+
+    job_name = f"discover-{int(time.time())}"
+    result = db.discover_batch(
+        photo_paths=photo_paths,
+        job_name=job_name,
+        yes=True,
+    )
+    discovered_slug = result["slug"]
+    if slug is not None and slug != discovered_slug:
+        print(
+            f"WARN: trigger said slug={slug!r} but discovery found "
+            f"slug={discovered_slug!r}; trusting discovery.",
+            flush=True,
+        )
+
+    # Rename the staged photos from intake/_discover/<job>/ to
+    # intake/<slug>/<page>.jpg in the REAL repo. The OCR pass
+    # will then run with --skip-staging=True.
+    new_paths = db.restage_real_repo_after_discovery(
+        job_name=job_name,
+        slug=discovered_slug,
+        page_numbers_by_index=result["page_numbers"],
+    )
+    print(f"Restaged {len(new_paths)} photos into intake/{discovered_slug}/", flush=True)
+
+    # Cleanup the temporary discovery intake.
+    db.cleanup_discovery_intake(job_name)
+
+    return {
+        "slug": discovered_slug,
+        "page_order": result["page_order"],
+        "cover_paper_code": result["cover_paper_code"],
+        "cover_text": result["cover_text"],
+        "confidence": result["confidence"],
+        "photo_count": len(new_paths),
+        "page_numbers": result["page_numbers"],
+    }
 
 
 # ---------- Markscheme check + abort-email ----------
@@ -244,6 +390,8 @@ def run_pipeline(
     *,
     dry_run: bool = False,
     skip_codex: bool = False,
+    auto_discover_mode: bool = False,
+    photos_hint: int | None = None,
 ) -> dict:
     """End-to-end pipeline. Returns a dict with the run's artifacts
     and per-step status. The orchestrator's chat trigger calls this
@@ -253,6 +401,17 @@ def run_pipeline(
     Useful for re-running publish + email when the marking output
     is already on disk. (Mostly for the auto-pipeline to recover
     from a push that worked but the email send didn't.)
+
+    auto_discover_mode: when True, the orchestrator runs a Codex
+    discovery pass to identify the paper slug + printed page
+    order from the photos themselves, instead of trusting a
+    pre-supplied slug + page_order. The slug and page_order
+    arguments are still optional; if slug is given it's used as
+    a hint and the discovery result is trusted if they conflict.
+
+    photos_hint: when auto_discover_mode is True, this is the
+    expected photo count. If None, the orchestrator picks all
+    photos currently in the cache (oldest-first by LastWriteTime).
     """
     summary = {
         "slug": slug,
@@ -260,6 +419,47 @@ def run_pipeline(
         "dry_run": dry_run,
         "stages": {},
     }
+
+    # Step 0 (auto-discover only): identify the paper and the
+    # printed page order from the photos themselves. This runs
+    # before the markscheme check because we need to know which
+    # markscheme to look up.
+    if auto_discover_mode:
+        print("=" * 60, flush=True)
+        print("Step 0/8: auto-discover (paper + page order)", flush=True)
+        print("=" * 60, flush=True)
+        if dry_run:
+            print("  [dry-run] Would run discovery pass; skipping.", flush=True)
+            summary["stages"]["auto_discover"] = "dry-run"
+        else:
+            try:
+                discovery = auto_discover(slug, photos_hint)
+            except ValueError as e:
+                # Paper not in repo, or photos hint too small, etc.
+                print(f"  discovery failed: {e}", flush=True)
+                summary["stages"]["auto_discover"] = f"failed: {e}"
+                summary["aborted"] = True
+                return summary
+            slug = discovery["slug"]
+            # After auto_discover, the photos are correctly named
+            # at intake/<slug>/<page>.jpg in the real repo. The
+            # OCR pass will use --skip-staging=True to read them
+            # from there.
+            page_order = discovery["page_order"]
+            # photo_paths is the list of files we'll pass to OCR
+            # for reference. We use the staged files (in the
+            # real repo) as the source of truth.
+            intake_dir = REPO_ROOT / "intake" / slug
+            photo_paths = sorted(intake_dir.glob("*.jpg"))
+            print(f"  discovered slug={slug}, {len(photo_paths)} photos, "
+                  f"page_order={page_order}", flush=True)
+            summary["stages"]["auto_discover"] = "ok"
+            summary["discovered"] = {
+                "slug": slug,
+                "cover_paper_code": discovery["cover_paper_code"],
+                "cover_text": discovery["cover_text"],
+                "confidence": discovery["confidence"],
+            }
 
     if not skip_codex:
         if not photo_paths:
@@ -270,9 +470,9 @@ def run_pipeline(
                 f"{len(photo_paths)} photos. They must match."
             )
 
-    # Step 0: markscheme check. If missing, abort with email.
+    # Step 1: markscheme check. If missing, abort with email.
     print("=" * 60, flush=True)
-    print(f"Step 0/7: markscheme check for {slug}", flush=True)
+    print(f"Step 1/8: markscheme check for {slug}", flush=True)
     print("=" * 60, flush=True)
     exists, expected_path = check_markscheme_exists(slug)
     if not exists:
@@ -299,9 +499,9 @@ def run_pipeline(
     summary["stages"]["markscheme_check"] = "ok"
 
     if not skip_codex:
-        # Step 1: stage photos
+        # Step 2: stage photos
         print("=" * 60, flush=True)
-        print(f"Step 1/7: stage {len(photo_paths)} photos to intake/{slug}/", flush=True)
+        print(f"Step 2/8: stage {len(photo_paths)} photos to intake/{slug}/", flush=True)
         print("=" * 60, flush=True)
         if not dry_run:
             ocr = ocr_batch.run_ocr(
@@ -313,6 +513,7 @@ def run_pipeline(
                 batch_id=None,
                 yes=True,
                 skip_copy_back=False,
+                skip_staging=auto_discover_mode,
             )
             if ocr["codex_returncode"] != 0:
                 summary["stages"]["ocr"] = f"codex exit {ocr['codex_returncode']}; abort"
@@ -324,9 +525,9 @@ def run_pipeline(
             print(f"  [dry-run] Would stage {len(photo_paths)} photos and call codex_lane", flush=True)
             summary["stages"]["ocr"] = "dry-run"
 
-        # Step 2: marking pass
+        # Step 3: marking pass
         print("=" * 60, flush=True)
-        print(f"Step 2/7: marking pass for {slug}", flush=True)
+        print(f"Step 3/8: marking pass for {slug}", flush=True)
         print("=" * 60, flush=True)
         if not dry_run:
             mark = mark_batch.run_marking(
@@ -349,9 +550,9 @@ def run_pipeline(
         summary["stages"]["ocr"] = "skipped"
         summary["stages"]["marking"] = "skipped"
 
-    # Step 3: publish
+    # Step 4: publish
     print("=" * 60, flush=True)
-    print(f"Step 3/7: publish (render pages/assessments/{slug}.html)", flush=True)
+    print(f"Step 4/8: publish (render pages/assessments/{slug}.html)", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         student = publish.read_student_json(require_recipient=False)
@@ -379,9 +580,9 @@ def run_pipeline(
         except Exception:
             summary["meta"] = {}
 
-    # Step 4: auto-commit + push
+    # Step 5: auto-commit + push
     print("=" * 60, flush=True)
-    print("Step 4/7: git auto-commit + push to origin/main", flush=True)
+    print("Step 5/8: git auto-commit + push to origin/main", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         if not git_has_changes():
@@ -402,10 +603,10 @@ def run_pipeline(
         print("  [dry-run] Would git add + commit + push to origin/main", flush=True)
         summary["stages"]["git"] = "dry-run"
 
-    # Step 5: wait for the Pages workflow to deploy (so the public
+    # Step 6: wait for the Pages workflow to deploy (so the public
     # URL is live when the email lands).
     print("=" * 60, flush=True)
-    print("Step 5/7: wait for Pages deploy", flush=True)
+    print("Step 6/8: wait for Pages deploy", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         if wait_for_pages_deploy(slug, timeout_sec=120):
@@ -417,9 +618,9 @@ def run_pipeline(
         print("  [dry-run] Would poll the latest workflow run for completion", flush=True)
         summary["stages"]["pages_deploy"] = "dry-run"
 
-    # Step 6: send the email
+    # Step 7: send the email
     print("=" * 60, flush=True)
-    print(f"Step 6/7: send email ({to_mode})", flush=True)
+    print(f"Step 7/8: send email ({to_mode})", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         student = send_email.read_student_json(require_recipient=True)
@@ -519,14 +720,15 @@ def parse_args(argv=None) -> argparse.Namespace:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--slug", required=True, help="Paper slug.")
+    p.add_argument("--slug", default=None, help="Paper slug. Optional when --auto-discover is set.")
     p.add_argument(
         "--photos", nargs="*", type=Path, default=[],
-        help="Photo paths in glob order. Required unless --skip-codex is set.",
+        help="Photo paths in glob order. Required unless --skip-codex or --auto-discover is set.",
     )
     p.add_argument(
         "--page-order", type=int, nargs="*", default=None,
-        help="Printed page number for each photo, in --photos order. Gaps are fine.",
+        help="Printed page number for each photo, in --photos order. Gaps are fine. "
+             "Optional when --auto-discover is set.",
     )
     p.add_argument("--to", choices=("staging", "live"), default="staging",
                    help="Which recipient to email. Default staging (Aaron).")
@@ -535,21 +737,36 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="Do every step except the destructive ones (no push, no email send, no git commit).")
     p.add_argument("--skip-codex", action="store_true",
                    help="Skip OCR and marking. Useful for re-running publish + email when marking is already done.")
+    p.add_argument("--auto-discover", action="store_true",
+                   help="Run a Codex discovery pass to identify the paper slug and printed page "
+                        "order from the photos themselves. The slug and page-order arguments "
+                        "become optional; the orchestrator picks the most recent N photos from "
+                        "the gateway cache (N from --photos-hint, or all of them).")
+    p.add_argument("--photos-hint", type=int, default=None,
+                   help="Expected number of photos for --auto-discover. If omitted, the "
+                        "orchestrator uses every photo currently in the gateway cache.")
     return p.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
 
-    if not args.skip_codex and not args.photos:
-        print("ERROR: --photos is required unless --skip-codex is set.", file=sys.stderr)
+    if not args.skip_codex and not args.auto_discover and not args.photos:
+        print("ERROR: --photos is required unless --skip-codex or --auto-discover is set.", file=sys.stderr)
+        return 1
+    if not args.auto_discover and not args.slug:
+        print("ERROR: --slug is required unless --auto-discover is set.", file=sys.stderr)
         return 1
 
     if not args.yes and not args.dry_run:
-        print(f"This will run the full pipeline for {args.slug}:", flush=True)
-        print(f"  photos: {len(args.photos)}")
-        if args.page_order:
-            print(f"  page order: {args.page_order}")
+        print(f"This will run the full pipeline for {args.slug or '(auto-discover)'}:", flush=True)
+        if args.auto_discover:
+            print(f"  mode: auto-discover (slug + page order from Codex discovery pass)")
+            print(f"  photos hint: {args.photos_hint or 'all photos in cache'}")
+        else:
+            print(f"  photos: {len(args.photos)}")
+            if args.page_order:
+                print(f"  page order: {args.page_order}")
         print(f"  to: {args.to}")
         print(f"  Includes: codex OCR, codex marking, publish, git push, SMTP email send.")
         resp = input("Continue? [y/N] ").strip().lower()
@@ -564,6 +781,8 @@ def main(argv=None) -> int:
         to_mode=args.to,
         dry_run=args.dry_run,
         skip_codex=args.skip_codex,
+        auto_discover_mode=args.auto_discover,
+        photos_hint=args.photos_hint,
     )
 
     print("", flush=True)
