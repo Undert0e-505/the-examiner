@@ -933,7 +933,20 @@ def wait_for_pages_deploy(slug: str, timeout_sec: int = 120) -> bool:
     # REST calls we can use a header constructed from a username
     # + PAT (the username is ignored for fine-grained PATs).
     from send_email import _read_credential
+    # Try the dedicated PAT targets first, then fall back to the
+    # git-credential-manager blob (which stores protocol/host/
+    # username/password in a multi-line string). The PAT IS
+    # there -- it's just stored under the git helper's target
+    # name "git:https://github.com", not under "github:pat" /
+    # "github-token".
     token = _read_credential("github:pat") or _read_credential("github-token")
+    if not token:
+        git_blob = _read_credential("git:https://github.com")
+        if git_blob:
+            for line in git_blob.splitlines():
+                if line.startswith("password="):
+                    token = line.split("=", 1)[1].strip()
+                    break
     if not token:
         print("  No GitHub PAT in Credential Manager; skipping deploy wait", flush=True)
         return False
