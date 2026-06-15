@@ -803,8 +803,9 @@ def render_question_html(q: dict, slug: str) -> str:
         score = legibility["legibility_score"]
         ocr_mode = esc(legibility.get("ocr_mode") or "")
         mode_label = ocr_mode.replace("_", " ") if ocr_mode else "n/a"
+        flagged_class = " flagged" if legibility.get("flag_for_recheck") else ""
         legibility_html = (
-            f'<div class="legibility">'
+            f'<div class="legibility{flagged_class}">'
             f'<span class="legibility-tag">legibility {score}/5</span>'
             f'<span class="legibility-mode">{mode_label}</span>'
             f'<p class="legibility-feedback">{feedback}</p>'
