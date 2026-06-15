@@ -37,14 +37,14 @@ letting the scripts know what name, email, and salutation to use.
 
 ## Where the real name and email live
 
-They live in `private/student.json`, which is gitignored. The
-file is the single source of truth for the scripts that need to
-know the student's identity (the feedback-page publisher, the
-emailer, the feedback harvester). The committed template is at
-`docs/student.example.json` — copy it to `private/student.json`
-and fill in the placeholders. The published-template file shows
-the schema and a filled-in worked example (with the student's
-identity in the `notes` field, for context).
+They live in `private/will.json` and `private/aaron.json` (both
+gitignored), with `private/active.json` as a single-key pointer
+that says which one is in use. The scripts (`publish.py`,
+`email.py`) read `active.json` first, then load the named
+identity file. The flip from staging to live is a one-line
+edit to `active.json`. The committed template / docs are in
+`private/README.md` (gitignored, but readable for anyone with
+access to the box) and the schema is documented there.
 
 The scripts read it with a one-liner like:
 
