@@ -1,5 +1,8 @@
-"""One-off script: rewrite 'Will' narrations in gitignored
+"""One-off script: rewrite student-name narrations in gitignored
 assessment files to 'the student' / 'You' for second-person feedback.
+
+Defensive scrubber. Source-side prompt changes mean this rarely
+fires; keep it as a safety rail.
 
 Run once. Idempotent.
 """
@@ -12,7 +15,7 @@ ROOT = Path(r"D:\dev\the-examiner\assessments\aqa-84621h-chemistry-higher-2024-0
 def rewrite(text: str) -> str:
     """Walk the text, treating runs of text in `"`, `'`, or `` ` ``
     as opaque (verbatim-quote zones we don't touch), and applying
-    the Will -> you/the student substitution to the rest."""
+    the student-name -> you/the student substitution to the rest."""
     out = []
     i = 0
     n = len(text)

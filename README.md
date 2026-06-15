@@ -3,24 +3,36 @@
 A second-pair-of-eyes GCSE marker, built for a single GCSE student
 (this repo refers to them as "the student" throughout — see
 `docs/PRIVACY.md` for why). The pipeline ingests GCSE question
-papers and mark schemes, runs structured extraction on them, and
-(in Phase 3+) will mark photos of the student's answers and
-publish the per-question results to GitHub Pages for them to
-review.
+papers and mark schemes, runs structured extraction on them, then
+(once the student submits photos of their answers) runs OCR +
+marking on the photos and publishes per-question results to
+GitHub Pages for the student to review, followed by an email to
+Aaron and (when `active.json=student`) to the student.
 
-This README describes the *current* state of the pipeline. Phases that
-are not yet built are marked **(Phase 3+, not built yet)**.
+This README describes the *current* state of the pipeline.
 
-## Status (2026-06-13)
+## Status (2026-06-15)
 
 | Phase | What it does | Status |
 |---|---|---|
 | 1. Indexer | Discover QP+MS PDFs in `papers/`, pair them by content, slug, write per-pair metadata + KVdb bucket | ✅ Built, committed (`b34230d`) |
 | 2. Extractor | Use `minimax-m3:cloud` to extract per-question structure from the QP and per-criterion structure from the MS, into `paper.json` and `markscheme.json` per pair | ✅ Built, committed (`97e64f1`) |
-| 3. Assessor | OCR the student's photos (GPT-4o), match to the right paper, mark using the indexed `markscheme.json` as rubric, write per-assessment folder | (Phase 3+, not built yet) |
-| 4. Publisher | Generate a per-assessment HTML page on GitHub Pages for the student to review per mark | (Phase 3+, not built yet) |
-| 5. Emailer | Send Aaron + the student the assessment URL after publish | (Phase 3+, not built yet) |
-| 6. Feedback harvester | Poll the student's per-mark responses from KVdb, write `corrections.md`, update `calibration/<subject>.md` | (Phase 3+, not built yet) |
+| 3. Assessor | OCR the student's photos (Codex in a disposable sandbox), match to the right paper, mark using the indexed `markscheme.json` as rubric, write per-assessment folder with `Q01-Q09.marking.md` + `SUMMARY.md` | ✅ Built, validated on `aqa-84621h-chemistry-higher-2024-05` (71/100, 2026-06-15) |
+| 3a. Auto-discover | Paper + page-order discovery from a Telegram photo batch (no need for the user to know the slug or send the photos in order) | ✅ Built, validated (2026-06-15) |
+| 3b. Legibility scoring | Per-question 0–5 legibility score with recheck badge on the assessment page | ✅ Built, validated (2026-06-15) |
+| 4. Publisher | Generate a per-assessment HTML page on GitHub Pages for the student to review per mark + per criterion | ✅ Built, deployed (Pages live at `https://undert0e-505.github.io/the-examiner/`) |
+| 4a. Design system | Warm orange accent + Instrument Serif / Inter / JetBrains Mono. Two-column desktop with sticky rail. Mobile compact rail card. Verdict pills colour-coded. | ✅ CodeX-authored, 2026-06-15 |
+| 5. Emailer | Send Aaron (always) + the student (only when `active.json=student` AND `--to live`) the assessment URL after publish | ✅ Built, validated on Aaron (2026-06-15) |
+| 5a. Bucket self-heal | If KVdb 404s (long-idle bucket GC'd by kvdb.io), the orchestrator creates a new one and writes the new id to `kvdb-bucket.txt` | ✅ Built, validated (2026-06-15) |
+| 6. Feedback harvester | Poll the student's per-mark responses from KVdb, write `corrections.md`, update `calibration/<subject>.md` | ✅ Built (Phase 3 feedback loop) |
+
+**The pipeline is end-to-end as of 2026-06-15** (commit `0099041` on
+`main`, branch `pre-regression-backup-2026-06-15` keeps the pre-regression
+snapshot). The only piece of glue missing is wiring the Telegram
+gateway's `/mark` command parser to invoke the orchestrator
+automatically — that requires changes in the gateway process, not
+this repo. Until then, runs are kicked off manually with
+`python src\run.py ...` from this repo's root.
 
 ## What's in `papers/` (today)
 
@@ -33,10 +45,15 @@ dataset:
 | `aqa-84621h-chemistry-higher-2024-05` | AQA | 8462/1H | 1 | Higher | May 2024 | 44 sub-parts | 9 grouped | 100 |
 | `aqa-87021-english-literature-2024-05` | AQA | 8702/1 | 1 (Shakespeare + 19th c. novel) | — (untiered) | May 2024 | 13 | 13 | 64 (any-1+any-1 of 13) |
 
+Only the chemistry paper has been run end-to-end (live assessment
+page, live email, live feedback loop). The maths and English Lit
+papers are indexed and have mark schemes extracted; the assessor's
+been validated on chemistry only.
+
 ## Architecture
 
 ```
-papers/             PDFs (originals) + per-slug subfolders
+papers/             PDFs (originals, gitignored) + per-slug subfolders
   └── <slug>/       meta.qp.json, meta.ms.json, pair.json,
                     paper.json, markscheme.json, kvdb-bucket.txt,
                     raw/  (gitignored)
@@ -45,19 +62,81 @@ index/
 src/
   index_papers.py         Phase 1: discover + pair + slug + bucket
   extract_questions.py    Phase 2: LLM-extract QP + MS into JSON
+  discover_batch.py       Phase 3a: paper + page-order discovery from photos
+  ocr_batch.py            Phase 3: Codex OCR of student photos in a sandbox
+  mark_batch.py           Phase 3: Codex marking pass in a sandbox
+  run.py                  9-stage orchestrator: discover -> OCR -> mark
+                          -> publish -> git push -> Pages -> email
+  publish.py              Phase 4: per-assessment HTML, push to main
+  send_email.py           Phase 5: SMTP send via Gmail app password
+  poll_student_feedback.py Phase 6: KVdb feedback harvester
+  scrub_student_narration.py Privacy scrubber: defensive rewrite of
+                          the student's name in gitignored assessment files
+                          before commit (kept as a safety rail; source-side
+                          prompt changes mean it rarely fires)
   llm.py                  Ollama chat wrapper (chat + chat_json + retry)
-  prompts/
-    extract_qp.txt        system+user prompt for QP extraction
-    extract_ms.txt        system+user prompt for MS extraction
-intake/             (Phase 3+) photos from Telegram, one folder per batch
-transcripts/        (Phase 3+) OCR'd photos (markdown)
-assessments/        (Phase 3+) per-batch marks + corrections
-calibration/        (Phase 3+) per-subject feedback memory
-pages/              (Phase 3+) GitHub Pages root
-outbox/             (Phase 3+) rendered emails ready to send
+  prompts/                LLM prompts (versioned text)
+intake/             Phase 3: photos from Telegram, one folder per batch
+                    (gitignored: photos are personal data)
+transcripts/        Phase 3: OCR'd photos (markdown) (gitignored)
+assessments/        Phase 3: per-batch marks + corrections
+                    (gitignored: includes the student's name)
+calibration/        Phase 6: per-subject feedback memory
+pages/              Phase 4: GitHub Pages root (gitignored: rebuilt on each publish)
+outbox/             Phase 5: rendered emails (gitignored)
+private/            Per-identity config (active.json, aaron.json, student.json)
+                    gitignored. Source of truth for salutation / sign-off
+                    / recipient routing. See docs/PRIVACY.md.
 ```
 
-## How Phases 1 and 2 run today
+## How the orchestrator runs today
+
+The pipeline is a single command. From the repo root:
+
+```powershell
+# Run on a paper you already know the slug of, with photos already
+# staged in intake/<slug>/ as <page>.jpg
+D:\Python310\python.exe src\run.py --slug aqa-84621h-chemistry-higher-2024-05 --yes
+
+# Run on a fresh batch of photos from the gateway cache; Codex
+# will discover the paper slug + page order from the photos
+D:\Python310\python.exe src\run.py --auto-discover --photos-hint 26 --yes
+
+# Dry-run (no Codex, no git push, no email) — useful for verifying
+# the pipeline is wired up end-to-end
+D:\Python310\python.exe src\run.py --slug aqa-84621h-chemistry-higher-2024-05 --dry-run --skip-codex --yes
+
+# Send a real email when done (default is staging, which goes to Aaron)
+D:\Python310\python.exe src\run.py --slug aqa-84621h-chemistry-higher-2024-05 --to staging --yes
+D:\Python310\python.exe src\run.py --slug aqa-84621h-chemistry-higher-2024-05 --to live --yes
+```
+
+The 9 stages are:
+
+1. **Auto-discover** (if `--auto-discover`): pick the latest N photos
+   from the gateway cache, run Codex in a fresh sandbox to identify
+   the paper slug + printed page order, restage the photos into
+   `intake/<slug>/<page>.jpg`.
+2. **Markscheme check**: abort with an email if `papers/<slug>/markscheme.json` is missing.
+3. **OCR**: Codex reads the photos, writes per-page `transcripts/<slug>/<page>.transcript.md` via `src/ocr_batch.py`.
+4. **Marking**: Codex evaluates each question against `markscheme.json`, writes per-question `assessments/<slug>/Q01-Q09.marking.md` + `SUMMARY.md` via `src/mark_batch.py`. Includes a per-question legibility score (0-5).
+5. **Publish**: render `pages/assessments/<slug>.html` from the per-question marking files via `src/publish.py`. Codifies the design system (warm orange accent, Instrument Serif, two-column with sticky rail).
+6. **Git commit + push**: orchestrator commits the new assessment + page + SUMMARY, pushes to `main`.
+7. **Pages deploy wait**: poll the GitHub Actions API for the `static.yml` workflow run; wait for green.
+8. **Email**: SMTP send via `jimothyoakley55@gmail.com` (Jimothy's account, app password in Windows Credential Manager). Staging goes to Aaron. Live (when `active.json=student`) goes to the student.
+9. **Bucket self-heal**: if KVdb 404s on the bucket (kvdb.io GCs buckets after long idle), the orchestrator creates a new one and writes the new id to `papers/<slug>/kvdb-bucket.txt`. The student-feedback widget on the live page picks up the new bucket via `data-kvdb-bucket` attribute on the next page load.
+
+### Active identity
+
+The orchestrator reads `private/active.json` to decide who the email
+goes to. `active.json` is `{"active": "aaron"}` (default) or
+`{"active": "student"}`. Each identity has its own `display_name`,
+`salutation`, `signoff`, `recipient_email_staging` (always Aaron's
+address), and `recipient_email_live` (the identity's own email).
+Safety rail: even with `active=student`, `--to staging` still goes to
+Aaron. `--to live` is the only thing that emails the student.
+
+## How Phases 1 and 2 run (unchanged from 2026-06-13)
 
 ### Phase 1 — Indexer
 
@@ -119,20 +198,28 @@ separately so you can see progress between calls.
 
 ## Setup (one-time)
 
-See `docs/SETUP.md`. As of 2026-06-13, the first-time checklist has
-been partly worked through: GitHub token is in place, papers are
-seeded, indexer + extractor are written and committed, KVdb buckets
-are auto-generated. Pages is still not enabled (deferred to when the
-publisher is written).
+See `docs/SETUP.md`. As of 2026-06-15:
+
+- GitHub token is in place (Contents + Workflows R/W, fine-grained PAT in Windows Credential Manager).
+- Papers are seeded, indexer + extractor are written and committed, KVdb buckets are auto-generated.
+- **GitHub Pages is enabled** on the public repo (was a hard gate, now lifted). The `static.yml` deploy workflow is green.
+- **The Telegram bot is NOT yet wired to the orchestrator** — `intake/<slug>/` is populated by hand (or by Aaron copying the latest N from the gateway cache and renaming) until that glue is built. The OpenClaw gateway already caches Telegram media at `C:\Users\openclaw-agent\.openclaw\media\inbound\`.
+- **OPENAI_API_KEY is not needed** — the OCR and marking passes run Codex CLI in a sandbox, authenticated via ChatGPT Pro subscription.
 
 ## The student
 
 The system is built for one student. The student's full name, email
-address, and any other identifying details are **not in this repo** —
-they live in the gitignored `private/student.json` file, which the
-scripts read at runtime. See `docs/PRIVACY.md` for the full policy
-(what's allowed, what's not, what to do if a secret is committed by
-accident).
+address, photos, transcripts, and assessment results are **not in
+this repo** — they live in gitignored paths:
+
+- `private/student.json` (or per-identity `aaron.json` / `student.json`): name, email
+- `intake/<slug>/*.jpg`: photos (AQA copyright + personal data)
+- `transcripts/<slug>/*.md`: OCR'd photos
+- `assessments/<slug>/*.md`: marking output
+- `pages/assessments/<slug>.html`: the published page (regenerated on each publish, gitignored)
+
+See `docs/PRIVACY.md` for the full policy (what's allowed, what's
+not, what to do if a secret is committed by accident).
 
 The system is the student's second pair of eyes: they self-mark first,
 this pipeline is the independent second mark.
@@ -141,5 +228,19 @@ this pipeline is the independent second mark.
 
 - **PDF text extraction** → pymupdf text layer. No LLM. Typeset text, no handwriting, no need.
 - **Structured question + mark-scheme extraction** (Phase 2) → `minimax-m3:cloud` via Ollama. This is where the model earns its keep: long-context structured JSON output of question stems, extracts, AO tags, indicative content, and spec refs. **Set up `minimax-m3:cloud` with `ollama pull minimax-m3:cloud`.**
-- **Photo OCR of the student's handwriting** (Phase 3, not built yet) → GPT-4o via the OpenAI API. State-of-the-art on messy handwriting. The two-pass + student-feedback loop is the only thing that makes this reliable.
-- **Marking** (Phase 3, not built yet) → GPT-4o. The marking pass is where the model needs to be smart, not just fast.
+- **Photo OCR of the student's handwriting** (Phase 3) → OpenAI Codex CLI (ChatGPT Pro) in a disposable sandbox. Two-pass: discover-then-OCR. The verbatim-rule is the only thing that makes the OCR reliable.
+- **Marking** (Phase 3) → Codex CLI. The marking pass is where the model needs to be smart, not just fast. Per-criterion evaluation against the mark scheme, with AO tags and spec_refs. Output is `Q01-Q09.marking.md` (per question) + `SUMMARY.md` (totals).
+
+## Regression testing
+
+The chemistry paper has been run end-to-end multiple times. The
+expected deltas between runs:
+
+- **Marking should be deterministic at the question-total level** (modulo Codex's nondeterminism on a fresh sandbox).
+- **Legibility scoring should be stable** across runs (4, 4, 3, 3, 3, 4, 1, 3, 3 for the chemistry 2024 paper).
+- **Auto-discover is deterministic at the page-mapping level** (`page_numbers: {1: null, 2..12, 14, 15, 17, 19..29}` for the chemistry 2024 paper, confidence `high`).
+- **Page rendering is byte-stable** (the design system and the renderer haven't changed since commit `4ccdc90`).
+
+If a regression run lands within ±2 marks of the previous run with
+the same legibility scores, the pipeline is healthy. See
+`docs/REGRESSION-RUN.md` for the procedure.
