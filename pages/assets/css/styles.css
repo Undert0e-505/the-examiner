@@ -928,6 +928,14 @@ code,
   border-radius: var(--radius-md);
   background: transparent;
   border: 1px dashed var(--line);
+  /* Mobile flex order: place after the .callout.obs (order 4)
+     so the assessor notes appear at the bottom of the page,
+     after the per-question breakdown and the cross-paper
+     observations callout. Without this, the default flex
+     order (0) puts the assessor notes at the top of the
+     page on mobile, which is wrong — it's pipeline meta, not
+     student-facing content. */
+  order: 5;
 }
 
 .assessor-notes > summary {
@@ -1225,7 +1233,8 @@ code,
 
   .section-header,
   .questions,
-  .callout {
+  .callout,
+  .assessor-notes {
     order: initial;
   }
 
