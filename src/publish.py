@@ -49,7 +49,7 @@ import shutil
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path("D:/dev/the-examiner")
+REPO_ROOT = Path(__file__).resolve().parent.parent   # src/publish.py -> repo root
 ASSESSMENTS = REPO_ROOT / "assessments"
 PAPERS = REPO_ROOT / "papers"
 PRIVATE = REPO_ROOT / "private"
@@ -513,13 +513,19 @@ def render_hero_html(meta: dict, summary: dict, kvdb_bucket: str) -> str:
 
 
 def render_question_html(q: dict, slug: str) -> str:
-    """Render one question as an accordion section. Open by default
-    on desktop (so the page doesn't feel empty on first load) and
-    closed on mobile (collapsed by default, tap to expand)."""
+    """Render one question as an accordion section. The first
+    question is open by default on all viewports; subsequent
+    questions are collapsed. The collapsed-state headline shows
+    the question's printed_context (one-line summary) rather than
+    the sub-part IDs, so it reads as a real headline and not a
+    chevron-in-void."""
     qnum = q["qnum"]
     q_label = q["q_label"]
     total_a = q.get("total_awarded", 0)
     total_p = q.get("total_available", 0)
+    is_first = str(qnum).lstrip("0") == "1"
+    open_state = "true" if is_first else "false"
+    q_sub = q.get("printed_context") or q.get("subparts_covered", "")
     context_html = ""
     if q.get("printed_context"):
         context_html = f'<div class="qcontext">{esc(q["printed_context"])}</div>'
@@ -536,11 +542,11 @@ def render_question_html(q: dict, slug: str) -> str:
         q_summary_html = f'<div class="qsummary">{md_to_html_simple(q["q_summary_md"])}</div>'
 
     return f"""
-<section class="qsection" data-open="false" id="q-{qnum}">
-  <button class="qhead" type="button" aria-expanded="false" aria-controls="q-{qnum}-body">
+<section class="qsection" data-open="{open_state}" id="q-{qnum}">
+  <button class="qhead" type="button" aria-expanded="{open_state}" aria-controls="q-{qnum}-body">
     <span class="qnum">Q{qnum}</span>
     <span class="qmain">
-      <span class="qsub">{esc(q.get('subparts_covered', ''))}</span>
+      <span class="qsub">{esc(q_sub)}</span>
     </span>
     <span class="qscore">
       <span class="a">{total_a}</span>
@@ -586,7 +592,7 @@ def render_criterion_html(c: dict, slug: str = "", qnum: str = "", cnum: int = 0
     return f"""
 <div class="criterion {verdict_class}" data-criterion-id="{esc(criterion_id)}" data-verdict="{verdict_class}">
   <div class="criterion-head">
-    <span class="marks">×{marks_p}</span>
+    <span class="marks">{marks_a}/{marks_p}</span>
     {f'<span class="ao">{ao}</span>' if ao and ao != '—' else ''}
     <span class="subq">{subq}</span>
     <span class="verdict-pill {verdict_class}">{esc(decision_label)}</span>
@@ -641,7 +647,7 @@ def render_rail_html(meta: dict, summary: dict, questions: list[dict]) -> str:
   <div class="rail-inner">
     <div class="rail-card">
       <h3>At a glance</h3>
-      <div class="total">{total_awarded}<span class="total-sub"> / {total_avail}</span></div>
+      <div class="total">{total_awarded}<span class="total-sub"> / {total_avail} · {pct}%</span></div>
       <div class="progress" aria-label="Progress">
         <div class="bar" style="width: {pct}%;"></div>
       </div>
