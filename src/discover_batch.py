@@ -264,9 +264,16 @@ def restage_real_repo_after_discovery(
     existing OCR pass (with --skip-staging) then picks up these
     files unchanged.
 
-    Photos whose page number couldn't be determined are named
-    `unknown-NN.jpg` and excluded from the page_order list.
-    Returns the list of new paths in `intake/<slug>/`.
+    The cover photo (file index 1) is always named `01.jpg`,
+    regardless of what Codex reports for its page number. Most
+    exam covers have the page number "1" printed (or close to
+    it), and even if Codex reports None for the cover, defaulting
+    to page 1 keeps the OCR pass's filename expectations clean.
+
+    Photos whose page number couldn't be determined (and that
+    aren't the cover) are named `unknown-NN.jpg` and excluded
+    from the page_order list. Returns the list of new paths in
+    `intake/<slug>/`.
     """
     src_dir = REPO_ROOT / "intake" / DISCOVER_INTAKE_SLUG / job_name
     if not src_dir.is_dir():
@@ -288,7 +295,10 @@ def restage_real_repo_after_discovery(
             raise ValueError(f"unexpected photo name: {src.name}")
         idx = int(m.group(1))
         page = page_numbers_by_index.get(idx)
-        if page is None:
+        if idx == 1 and page is None:
+            # Cover photo: always default to page 1
+            new_name = "01.jpg"
+        elif page is None:
             new_name = f"unknown-{idx:02d}.jpg"
             print(f"WARN: photo index {idx} has no page number; naming {new_name}", flush=True)
         else:
