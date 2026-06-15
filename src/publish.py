@@ -426,7 +426,7 @@ def parse_criterion_block(block: str) -> dict | None:
         return None
     header = header_m.group(1).strip()
     # Extract AO and marks
-    ao_m = re.match(r"^(AO\d+|—|null|-)\s*--\s*(\d+)\s*marks?", header)
+    ao_m = re.match(r"^(AO\d+|—|null|-)\s*-+\s*(\d+)\s*marks?(?:\(s\))?", header)
     if not ao_m:
         return None
     ao = ao_m.group(1)
