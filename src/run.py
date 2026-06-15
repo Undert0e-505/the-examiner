@@ -214,6 +214,12 @@ def pick_latest_photos(count: int | None, cache_dir: Path) -> list[Path]:
     these are the new photos; the older photos in the cache are
     from previous runs of the same paper and are already in
     intake/<slug>/.
+
+    Errors if `count` is given and the cache has fewer than that
+    many photos. For the Telegram trigger, use `wait_for_photos`
+    instead -- it polls for the count to arrive and falls back
+    to "all current photos" if the user-specified count is
+    never reached.
     """
     if not cache_dir.is_dir():
         raise FileNotFoundError(f"gateway cache not found: {cache_dir}")
@@ -232,11 +238,203 @@ def pick_latest_photos(count: int | None, cache_dir: Path) -> list[Path]:
     return all_photos
 
 
+LAST_BATCH_MARKER = REPO_ROOT / "intake" / ".last_batch_marker"
+
+
+def _read_last_batch_marker() -> float | None:
+    """Return the mtime of the last-batch marker file, or None
+    if the marker doesn't exist (first-ever run, or marker
+    was wiped). The marker is updated by mark_batch_started()
+    at the beginning of every orchestrator run.
+    """
+    if not LAST_BATCH_MARKER.is_file():
+        return None
+    return LAST_BATCH_MARKER.stat().st_mtime
+
+
+def mark_batch_started() -> None:
+    """Touch the last-batch marker file. Called at the start of
+    every orchestrator run so that the NEXT bare-/mark can find
+    photos that arrived after this one.
+    """
+    LAST_BATCH_MARKER.parent.mkdir(parents=True, exist_ok=True)
+    LAST_BATCH_MARKER.touch()
+
+
+def wait_for_photos(
+    count: int | None,
+    cache_dir: Path,
+    *,
+    timeout_sec: int = 90,
+    poll_interval_sec: int = 5,
+    stability_sec: int = 15,
+    recent_window_sec: int = 1800,  # 30 min - long enough for the user to walk away after sending
+) -> list[Path]:
+    """Wait for photos to land in the gateway cache.
+
+    The Telegram gateway delivers photos one at a time; it can
+    take 30-60 seconds for a 26-photo batch to all appear in the
+    cache. If the user said "/mark 26 pages" and we start the
+    orchestrator the moment the message arrives, we'll see fewer
+    than 26 photos initially. The fix is to wait, not to error
+    out and ask the user.
+
+    Behaviour:
+      - If `count` is given: poll every `poll_interval_sec` for
+        up to `timeout_sec`. Return the latest `count` photos
+        once the cache has at least that many. If the timeout
+        fires first, return whatever is there (the orchestrator
+        will discover what it can and warn the user that the
+        count was short).
+      - If `count` is None (bare /mark): use a "stability"
+        check (no new photos for `stability_sec` seconds). When
+        the cache settles, return only the photos that arrived
+        AFTER the last orchestrator run (i.e. photos with
+        mtime > LAST_BATCH_MARKER's mtime). If the marker
+        doesn't exist (first-ever run), fall back to the
+        `recent_window_sec` heuristic: photos modified in the
+        last 5 minutes. The orchestrator's discovery pass
+        figures out the paper from those.
+      - If no photos at all within the timeout, raise
+        FileNotFoundError so the orchestrator aborts with a
+        clear "I never got any photos" message.
+
+    The default count-timeout (90s) is enough for typical
+    26-photo Telegram batches. For larger batches (50+ photos),
+    bump it. The stability check default (15s) is tuned to
+    Telegram's delivery cadence: typical photo-to-photo gap is
+    <1s, so 15s of silence reliably means the batch is done.
+    """
+    if not cache_dir.is_dir():
+        raise FileNotFoundError(f"gateway cache not found: {cache_dir}")
+
+    def _list_all():
+        return sorted(
+            [p for p in cache_dir.glob("*.jpg") if p.is_file()],
+            key=lambda p: p.stat().st_mtime,
+        )
+
+    def _list_after(cutoff_mtime: float):
+        return sorted(
+            [p for p in cache_dir.glob("*.jpg") if p.is_file() and p.stat().st_mtime > cutoff_mtime],
+            key=lambda p: p.stat().st_mtime,
+        )
+
+    if count is None:
+        # Stability check: wait for `stability_sec` of no new photos.
+        deadline = time.time() + timeout_sec
+        last_n = -1
+        last_change_at = time.time()
+        while time.time() < deadline:
+            n = len(_list_all())
+            if n != last_n:
+                print(f"  wait_for_photos: cache has {n} photos (stability check, need {stability_sec}s of silence)", flush=True)
+                last_n = n
+                last_change_at = time.time()
+            elif time.time() - last_change_at >= stability_sec:
+                # Settled. Filter to photos that arrived after the
+                # last orchestrator run.
+                all_photos = _list_all()
+                if not all_photos:
+                    raise FileNotFoundError(
+                        f"no photos in gateway cache after {timeout_sec}s stability check"
+                    )
+                marker_mtime = _read_last_batch_marker()
+                if marker_mtime is not None:
+                    batch_photos = _list_after(marker_mtime)
+                    print(
+                        f"  wait_for_photos: settled, returning {len(batch_photos)} photos "
+                        f"after last-batch marker (cache has {len(all_photos)} total)",
+                        flush=True,
+                    )
+                else:
+                    # No marker yet (first run). Use the recent
+                    # window as a heuristic.
+                    cutoff = time.time() - recent_window_sec
+                    batch_photos = _list_after(cutoff)
+                    print(
+                        f"  wait_for_photos: no last-batch marker; "
+                        f"returning {len(batch_photos)} photos modified in the last "
+                        f"{recent_window_sec}s (cache has {len(all_photos)} total)",
+                        flush=True,
+                    )
+                if not batch_photos:
+                    raise FileNotFoundError(
+                        f"cache settled at {n} photos but none are newer than the "
+                        f"last orchestrator run. Send the photos and try again."
+                    )
+                return batch_photos
+            time.sleep(poll_interval_sec)
+        # Timed out without settling. Filter to recent photos.
+        all_photos = _list_all()
+        if not all_photos:
+            raise FileNotFoundError(
+                f"timed out after {timeout_sec}s with no photos in gateway cache"
+            )
+        marker_mtime = _read_last_batch_marker()
+        if marker_mtime is not None:
+            batch_photos = _list_after(marker_mtime)
+        else:
+            cutoff = time.time() - recent_window_sec
+            batch_photos = _list_after(cutoff)
+        print(
+            f"  wait_for_photos: timed out after {timeout_sec}s, "
+            f"returning {len(batch_photos)} photos (stability check incomplete)",
+            flush=True,
+        )
+        if not batch_photos:
+            raise FileNotFoundError(
+                f"timed out after {timeout_sec}s; no recent photos in gateway cache"
+            )
+        return batch_photos
+
+    # Count-given path: wait until cache has at least N photos,
+    # then return the latest N. This path does NOT need the
+    # last-batch marker because the user gave an explicit count.
+    deadline = time.time() + timeout_sec
+    last_n = -1
+    while time.time() < deadline:
+        all_photos = _list_all()
+        n = len(all_photos)
+        if n != last_n:
+            print(f"  wait_for_photos: cache has {n} photos (waiting for {count})", flush=True)
+            last_n = n
+        if n >= count:
+            return all_photos[-count:]
+        time.sleep(poll_interval_sec)
+    # Timed out. Return what we have.
+    all_photos = _list_all()
+    if not all_photos:
+        raise FileNotFoundError(
+            f"timed out after {timeout_sec}s waiting for {count} photos in cache; "
+            f"got 0. The Telegram batch may not have arrived."
+        )
+    print(
+        f"  wait_for_photos: timed out after {timeout_sec}s, "
+        f"got {len(all_photos)}/{count} photos",
+        flush=True,
+    )
+    return all_photos
+
+
 def auto_discover(slug: str | None, photos_hint: int | None) -> dict:
-    """Run the discovery pass: pick the latest N photos from the
-    cache, run Codex to identify the paper + page order, rename
-    the photos in the real repo's intake/<slug>/, and return
-    the discovered slug + page_order.
+    """Run the discovery pass: wait for the latest N photos to
+    land in the cache, run Codex to identify the paper + page
+    order, rename the photos in the real repo's intake/<slug>/,
+    and return the discovered slug + page_order.
+
+    `photos_hint` is the user-supplied count (e.g. 26 from
+    "/mark 26 pages"). We use it as a WAIT TARGET, not a hard
+    requirement: we poll the gateway cache until at least that
+    many photos have arrived, OR a 90s timeout fires (whichever
+    is first). If the timeout fires with fewer photos, we
+    proceed with what we have and warn the user.
+
+    This is the fix for the 2026-06-15 chat where Aaron sent
+    "/mark 26 pages" while the photos were still uploading.
+    Previously, the orchestrator saw only 10 of 26 photos
+    initially and asked the user for a slug (which it should
+    have been able to discover from the photos). Now it waits.
 
     Returns a dict with the same shape as the run_pipeline result
     field for a discovered batch:
@@ -253,8 +451,18 @@ def auto_discover(slug: str | None, photos_hint: int | None) -> dict:
     """
     import discover_batch as db
     cache_dir = GATEWAY_CACHE
-    photo_paths = pick_latest_photos(photos_hint, cache_dir)
+    # Mark the batch as started BEFORE waiting, so the next bare-/mark
+    # can find photos that arrived after this run started.
+    mark_batch_started()
+    photo_paths = wait_for_photos(photos_hint, cache_dir)
     print(f"Auto-discover: picked {len(photo_paths)} photos from {cache_dir}", flush=True)
+    if photos_hint is not None and len(photo_paths) < photos_hint:
+        print(
+            f"  NOTE: hint was {photos_hint} photos, got {len(photo_paths)}. "
+            f"Proceeding with what arrived; the discovery pass will see a "
+            f"shorter stack than expected.",
+            flush=True,
+        )
 
     job_name = f"discover-{int(time.time())}"
     result = db.discover_batch(
