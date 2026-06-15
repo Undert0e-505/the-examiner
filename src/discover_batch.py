@@ -231,6 +231,7 @@ def run_codex_lane(
         "-PromptFile", str(prompt_file),
         "-UseCopy",
         "-Yes",
+        "-Force",
         "-ProgressIntervalSec", str(progress_interval_sec),
     ]
     print(f"About to run: {' '.join(cmd)}", flush=True)

@@ -451,10 +451,20 @@ def auto_discover(slug: str | None, photos_hint: int | None) -> dict:
     """
     import discover_batch as db
     cache_dir = GATEWAY_CACHE
-    # Mark the batch as started BEFORE waiting, so the next bare-/mark
-    # can find photos that arrived after this run started.
-    mark_batch_started()
     photo_paths = wait_for_photos(photos_hint, cache_dir)
+    # Mark the batch as started ONLY after we have a non-empty
+    # photo set. Otherwise a failed wait poisons the marker for
+    # the next run (the marker would be "now", and all photos
+    # already in the cache would be filtered as old). The marker
+    # is for "find photos that arrived after this run started";
+    # if the run didn't start successfully, no marker should
+    # be written.
+    if not photo_paths:
+        raise FileNotFoundError(
+            f"auto_discover: no photos in {cache_dir}. "
+            f"Send the photos and try again."
+        )
+    mark_batch_started()
     print(f"Auto-discover: picked {len(photo_paths)} photos from {cache_dir}", flush=True)
     if photos_hint is not None and len(photo_paths) < photos_hint:
         print(
