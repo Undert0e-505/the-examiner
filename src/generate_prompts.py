@@ -42,6 +42,7 @@ PROMPTS_DIR = REPO_ROOT / "src" / "prompts"
 TEMPLATES = {
     "ocr": PROMPTS_DIR / "ocr.md.j2",
     "mark": PROMPTS_DIR / "mark.md.j2",
+    "discover": PROMPTS_DIR / "discover.md.j2",
 }
 
 
@@ -244,6 +245,41 @@ def render_mark_prompt(
     )
 
 
+def render_discover_prompt(
+    photos: list[dict],
+    sandbox_dir: str | None = None,
+    real_repo: str = "D:/dev/the-examiner",
+) -> str:
+    """Render the discovery prompt. Returns the rendered markdown as
+    a string.
+
+    The discovery prompt asks Codex to:
+      - read the cover page and extract the paper code
+      - read the printed page number on each photo
+      - read the question numbers on each photo (best-effort)
+    It does NOT OCR the student's handwritten answers - that is a
+    separate pass.
+
+    photos: list of {"path": str, "index": int} dicts. The path
+            is the relative path inside the Codex sandbox (the
+            wrapper copies the staged photos into the sandbox at
+            the same relative location). The index is the
+            1-based file index for the prompt's references.
+    """
+    if not photos:
+        raise ValueError("photos must be non-empty for a discovery prompt")
+    job_name = "discover-batch"
+    if sandbox_dir is None:
+        sandbox_dir = f"D:/dev/codex-sandboxes/{job_name}"
+    env = _env()
+    tmpl = env.get_template("discover.md.j2")
+    return tmpl.render(
+        sandbox_dir=sandbox_dir,
+        real_repo=real_repo,
+        photos=photos,
+    )
+
+
 def write_prompt_to_spec_path(content: str, slug: str, stage: str) -> Path:
     """Write the rendered prompt to the path the codex_lane wrapper
     expects: D:/dev/codex-sandboxes/_specs/<jobname>/04_CODEX_PROMPT.md.
@@ -257,6 +293,8 @@ def write_prompt_to_spec_path(content: str, slug: str, stage: str) -> Path:
         job_name = f"ocr-{slug}"
     elif stage == "mark":
         job_name = f"mark-{slug}"
+    elif stage == "discover":
+        job_name = "discover-batch"
     else:
         raise ValueError(f"unknown stage: {stage!r}")
     spec_dir = Path("D:/dev/codex-sandboxes/_specs") / job_name
@@ -275,8 +313,8 @@ def parse_args(argv=None) -> argparse.Namespace:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--slug", required=True, help="Paper slug, e.g. 'aqa-84621h-chemistry-higher-2024-05'.")
-    p.add_argument("--stage", choices=("ocr", "mark"), required=True, help="Which prompt to render.")
+    p.add_argument("--slug", required=True, help="Paper slug (e.g. 'aqa-84621h-chemistry-higher-2024-05'). For --stage discover, use '_' or 'unknown' — the slug is being discovered.")
+    p.add_argument("--stage", choices=("ocr", "mark", "discover"), required=True, help="Which prompt to render.")
     p.add_argument(
         "--page-order",
         type=int,
@@ -322,8 +360,20 @@ def main(argv=None) -> int:
             page_contexts=page_contexts,
             batch_id=args.batch_id,
         )
-    else:  # mark
+    elif args.stage == "mark":
         content = render_mark_prompt(args.slug)
+    else:  # discover
+        if not args.page_order:
+            print("ERROR: --page-order (a list of photo paths) is required for --stage discover.", file=sys.stderr)
+            return 1
+        # Build the photos list with relative paths (the wrapper
+        # copies staged photos into the sandbox at intake/_discover/...).
+        photos_for_prompt = [
+            {"path": f"intake/_discover/discover-batch/{i+1:02d}.jpg",
+             "index": i + 1}
+            for i in range(len(args.page_order))
+        ]
+        content = render_discover_prompt(photos=photos_for_prompt)
 
     if args.write:
         out = write_prompt_to_spec_path(content, args.slug, args.stage)

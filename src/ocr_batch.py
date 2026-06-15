@@ -195,12 +195,19 @@ def run_ocr(
     yes: bool = False,
     progress_interval_sec: int = 60,
     skip_copy_back: bool = False,
+    skip_staging: bool = False,
 ) -> dict:
     """End-to-end OCR pass: stage photos, build the prompt, run codex_lane,
     copy transcripts back. Returns a dict with the run's artifacts.
 
     This is the function the orchestrator in src/run.py calls. The CLI
     just wraps it with argparse.
+
+    skip_staging: when True, skip the photo-staging step (assume
+    photos are already in intake/<slug>/<page>.jpg with the right
+    names). The orchestrator uses this in auto-discover mode,
+    where the discovery pass has already named the files
+    correctly.
 
     Returns:
         {
@@ -211,8 +218,28 @@ def run_ocr(
             "transcripts_copied_back": list[Path] | None,
         }
     """
-    intake_dir, copied_photos = stage_photos(slug, photo_paths, page_order)
-    print(f"Staged {len(copied_photos)} photos into {intake_dir}", flush=True)
+    intake_dir = REPO_ROOT / "intake" / slug
+    copied_photos: list[Path] = []
+    if skip_staging:
+        # Assume photos are already at intake/<slug>/<page>.jpg
+        # in the right names. Sanity-check the directory exists
+        # and has at least one .jpg; otherwise the OCR pass
+        # would have nothing to read.
+        if not intake_dir.is_dir():
+            raise FileNotFoundError(
+                f"skip_staging=True but {intake_dir} does not exist. "
+                f"Run without --skip-staging, or stage the photos first."
+            )
+        copied_photos = sorted(intake_dir.glob("*.jpg"))
+        if not copied_photos:
+            raise FileNotFoundError(
+                f"skip_staging=True but {intake_dir} has no .jpg files. "
+                f"Run without --skip-staging, or stage the photos first."
+            )
+        print(f"skip_staging: using {len(copied_photos)} photos already in {intake_dir}", flush=True)
+    else:
+        intake_dir, copied_photos = stage_photos(slug, photo_paths, page_order)
+        print(f"Staged {len(copied_photos)} photos into {intake_dir}", flush=True)
 
     page_numbers = page_order if page_order is not None else list(range(1, len(photo_paths) + 1))
     prompt_file = build_prompt(slug, page_numbers, page_contexts, batch_id)
