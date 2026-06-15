@@ -181,7 +181,9 @@
   var clearAllBtn = document.getElementById('clear-all-btn');
   if (clearAllBtn) {
     clearAllBtn.addEventListener('click', function () {
-      if (!confirm('Clear all responses for this paper?')) return;
+      if (!confirm('Clear all responses for this paper?\n\nThis will also delete the server-side feedback at the KVdb bucket for this paper. The bucket will be empty after this.')) return;
+
+      // 1. Clear localStorage and UI state (per criterion).
       document.querySelectorAll('.criterion').forEach(function (c) {
         var id = c.getAttribute('data-criterion-id');
         if (id) clearLocal(id);
@@ -197,6 +199,37 @@
         }
       });
       updateRailCount();
+
+      // 2. Also DELETE the server-side feedback at the bucket,
+      //    so the rail count and the bucket are in sync after
+      //    clear. Without this, reloading the page would
+      //    re-hydrate the responses from the bucket and the
+      //    "clear" would have been a no-op from the server's
+      //    point of view.
+      //
+      //    Failures are non-fatal: the local state is already
+      //    cleared, and a stale bucket entry will just get
+      //    overwritten on the next "Send all". The user gets
+      //    a browser alert so they can retry if they care.
+      if (BUCKET) {
+        var delUrl = 'https://kvdb.io/' + BUCKET + '/student-feedback';
+        var origText = clearAllBtn.textContent;
+        clearAllBtn.disabled = true;
+        clearAllBtn.textContent = 'Clearing bucket\u2026';
+        fetch(delUrl, { method: 'DELETE' })
+          .then(function (r) {
+            clearAllBtn.disabled = false;
+            clearAllBtn.textContent = origText;
+            if (!r.ok) {
+              alert('Local state cleared, but the bucket delete failed (' + r.status + '). The next page reload will re-hydrate the old responses. Try again, or "Send all" with the new state to overwrite.');
+            }
+          })
+          .catch(function (e) {
+            clearAllBtn.disabled = false;
+            clearAllBtn.textContent = origText;
+            alert('Local state cleared, but the bucket delete failed (' + e.message + '). The next page reload will re-hydrate the old responses. Try again, or "Send all" with the new state to overwrite.');
+          });
+      }
     });
   }
 
