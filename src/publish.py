@@ -433,6 +433,15 @@ def parse_question_marking(slug: str, q_label: str) -> dict:
         m = re.search(r"#### 3\. Question summary\s*\n+([^#]+)", content, re.DOTALL)
         if m: q_summary = m.group(1).strip()
 
+    # Legibility assessment. The mark prompt asks for a
+    # `### Legibility` block (H3) with four fields: legibility_score
+    # (int 0-5), ocr_mode (enum), reason (sentence), student_feedback
+    # (sentence). Try the current form first (no number), then the
+    # numbered form (older transcripts). Returns a dict with the
+    # four fields and a derived `flag_for_recheck` (True if score
+    # <= 2 or ocr_mode is context_inferred/unreadable).
+    legibility = _parse_legibility_block(content)
+
     return {
         "qnum": qnum,
         "q_label": q_label,
@@ -442,6 +451,81 @@ def parse_question_marking(slug: str, q_label: str) -> dict:
         "printed_context": printed_context,
         "criteria": criteria,
         "q_summary_md": q_summary,
+        "legibility": legibility,
+    }
+
+
+def _parse_legibility_block(content: str) -> dict:
+    """Parse the per-question Legibility section. Returns a dict:
+        {
+          "legibility_score": int | None,    # 0-5, or None if not found
+          "ocr_mode": str | None,           # clear_read | minor_uncertainty | context_inferred | unreadable
+          "reason": str,                    # one short sentence
+          "student_feedback": str,          # one short sentence
+          "flag_for_recheck": bool,         # True if score <= 2 or ocr_mode in {context_inferred, unreadable}
+        }
+    If the section is missing or any required field is empty,
+    the field is None / empty / False (the renderer falls back to
+    "no legibility data" rather than fabricating).
+    """
+    # Try un-numbered form first (current Codex output), then
+    # numbered form (older transcripts).
+    block = None
+    for pattern in (
+        r"### Legibility\s*\n+(.*?)(?=\n### |\n## |\Z)",  # un-numbered
+        r"#### 3\. Legibility.*?\n+(.*?)(?=\n#### |\n### |\n## |\Z)",  # numbered
+    ):
+        m = re.search(pattern, content, re.DOTALL)
+        if m:
+            block = m.group(1)
+            break
+    if not block:
+        return {
+            "legibility_score": None,
+            "ocr_mode": None,
+            "reason": "",
+            "student_feedback": "",
+            "flag_for_recheck": False,
+        }
+
+    # Extract each field by its bold-prefix label.
+    def _field(label: str) -> str:
+        m = re.search(rf"\*\*{re.escape(label)}:\*\*\s*([^\n\r]+)", block)
+        return m.group(1).strip() if m else ""
+
+    score_raw = _field("legibility_score")
+    ocr_mode = _field("ocr_mode")
+    reason = _field("reason")
+    student_feedback = _field("student_feedback")
+
+    legibility_score: int | None = None
+    if score_raw:
+        try:
+            legibility_score = int(score_raw)
+        except ValueError:
+            legibility_score = None
+
+    # Validate ocr_mode against the enum. Codex should be writing
+    # one of the four valid values, but we don't crash if it
+    # invents something new -- just flag it.
+    valid_modes = {"clear_read", "minor_uncertainty", "context_inferred", "unreadable"}
+    if ocr_mode and ocr_mode not in valid_modes:
+        # Unknown mode. Keep the string so the assessor can see
+        # what Codex wrote, but don't claim it's a known value.
+        pass
+
+    flag_for_recheck = False
+    if legibility_score is not None and legibility_score <= 2:
+        flag_for_recheck = True
+    if ocr_mode in ("context_inferred", "unreadable"):
+        flag_for_recheck = True
+
+    return {
+        "legibility_score": legibility_score,
+        "ocr_mode": ocr_mode,
+        "reason": reason,
+        "student_feedback": student_feedback,
+        "flag_for_recheck": flag_for_recheck,
     }
 
 
@@ -705,6 +789,34 @@ def render_question_html(q: dict, slug: str) -> str:
         crit_html_parts.append(render_criterion_html(c, slug=slug, qnum=qnum, cnum=len(crit_html_parts) + 1))
     crit_html = "\n".join(crit_html_parts) if crit_html_parts else '<p class="qsub">No per-criterion details available.</p>'
 
+    # Legibility assessment. Renders a small block in the per-Q
+    # body (after the criteria, before the question summary).
+    # The full breakdown (score, ocr_mode, reason) goes in the
+    # Assessor Notes collapsed section via the parent renderer.
+    legibility = q.get("legibility") or {}
+    legibility_html = ""
+    if legibility.get("legibility_score") is not None:
+        # Visible to Will: a one-line "letter to you" from the
+        # marker about this question's handwriting. The score
+        # and mode go in the assessor-only block.
+        feedback = esc(legibility.get("student_feedback") or "")
+        score = legibility["legibility_score"]
+        ocr_mode = esc(legibility.get("ocr_mode") or "")
+        mode_label = ocr_mode.replace("_", " ") if ocr_mode else "n/a"
+        legibility_html = (
+            f'<div class="legibility">'
+            f'<span class="legibility-tag">legibility {score}/5</span>'
+            f'<span class="legibility-mode">{mode_label}</span>'
+            f'<p class="legibility-feedback">{feedback}</p>'
+            f'</div>'
+        )
+
+    # "Needs recheck" badge in the Q head. Only shown when the
+    # legibility data is present AND the question is flagged.
+    recheck_badge = ""
+    if legibility.get("flag_for_recheck"):
+        recheck_badge = '<span class="recheck-badge" title="Handwriting was hard to read; recheck the original photo against the marking.">needs recheck</span>'
+
     # Question summary
     q_summary_html = ""
     if q.get("q_summary_md"):
@@ -718,6 +830,7 @@ def render_question_html(q: dict, slug: str) -> str:
       <span class="qsub">{esc(q_sub)}</span>
     </span>
     <span class="qscore">
+      {recheck_badge}
       <span class="a">{total_a}</span>
       <span class="s">/</span>
       <span class="b">{total_p}</span>
@@ -731,6 +844,7 @@ def render_question_html(q: dict, slug: str) -> str:
     <div class="criteria">
       {crit_html}
     </div>
+    {legibility_html}
     {q_summary_html}
   </div>
 </section>
@@ -848,18 +962,55 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
     if summary.get("observations_md"):
         obs_html = f'<section class="callout obs"><h2>Cross-paper observations</h2>{md_to_html_simple(summary["observations_md"])}</section>'
 
+    # Legibility rollup (assessor-only, in the collapsed notes).
+    # Shows per-Q legibility score, ocr_mode, and a one-line
+    # assessor-side reason. The student_feedback text is also
+    # shown here for the assessor's audit trail; the student
+    # already saw it in the per-Q body.
+    legibility_rows = []
+    for q in questions:
+        leg = q.get("legibility") or {}
+        score = leg.get("legibility_score")
+        if score is None:
+            continue
+        ocr_mode = esc(leg.get("ocr_mode") or "n/a")
+        reason = esc(leg.get("reason") or "")
+        feedback = esc(leg.get("student_feedback") or "")
+        flag = " ⚠ needs recheck" if leg.get("flag_for_recheck") else ""
+        legibility_rows.append(
+            f'<tr>'
+            f'<td>Q{esc(q["qnum"])}</td>'
+            f'<td>{score}/5{flag}</td>'
+            f'<td>{ocr_mode}</td>'
+            f'<td>{reason}</td>'
+            f'<td>{feedback}</td>'
+            f'</tr>'
+        )
+    legibility_table = ""
+    if legibility_rows:
+        legibility_table = (
+            f'<h3>Legibility per question</h3>'
+            f'<table class="legibility-table">'
+            f'<thead><tr><th>Q</th><th>Score</th><th>OCR mode</th><th>Reason (assessor)</th><th>Feedback to student</th></tr></thead>'
+            f'<tbody>{"".join(legibility_rows)}</tbody>'
+            f'</table>'
+        )
+
     # Assessor-only notes (pipeline meta: OCR blockers, marking uncertainty,
     # pipeline verdict). Rendered as a collapsed <details> so the student's
     # primary feedback dominates the page and the meta is one click away
     # for the assessor. The student never sees this on a normal read.
     assessor_notes_html = ""
-    if summary.get("assessor_notes_md"):
+    if summary.get("assessor_notes_md") or legibility_table:
         # md_to_html_simple already wraps paragraphs in <p>; the <details>
         # block uses <summary> as the clickable label.
         assessor_notes_html = (
             f'<details class="assessor-notes">'
             f'<summary>Assessor notes (pipeline meta, hidden by default)</summary>'
-            f'<div class="assessor-notes-body">{md_to_html_simple(summary["assessor_notes_md"])}</div>'
+            f'<div class="assessor-notes-body">'
+            f'{legibility_table}'
+            f'{md_to_html_simple(summary["assessor_notes_md"]) if summary.get("assessor_notes_md") else ""}'
+            f'</div>'
             f'</details>'
         )
 

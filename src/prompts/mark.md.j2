@@ -183,7 +183,77 @@ apply to sub-questions whose pages are missing or that are simply
 not covered by any of the transcripts. Mark these as
 NOT_APPLICABLE with a one-line justification.
 
-#### 3. Question summary (2-3 lines)
+#### 3. Legibility assessment (one block, 6 lines)
+
+This is a **risk signal**, not a re-grade. Per-question legibility
+captures how hard the handwriting was to read. The marking
+decisions above stand; this section asks: *could a tired but fair
+GCSE examiner have read this answer quickly enough to award the
+mark without heroic reconstruction?*
+
+For this question, write a `### Legibility` block with exactly
+these fields (use the literal `Field:` prefixes so the parser
+can find them):
+
+```
+### Legibility
+
+**legibility_score:** <integer 0-5>
+**ocr_mode:** <one of: clear_read | minor_uncertainty | context_inferred | unreadable>
+**reason:** <one short sentence, ~10-20 words, explaining what made this question easy or hard to read>
+**student_feedback:** <one short sentence, ~10-20 words, written directly to Will in second person ("Your handwriting...", "You wrote..."), giving specific actionable advice>
+```
+
+**legibility_score scale (anchor with the GC: would a tired
+GCSE examiner read this quickly without heroic reconstruction?):**
+- **5** = Clean print or fully legible joined-up writing; no
+  hesitation. A tired examiner reads it instantly.
+- **4** = Standard legible handwriting. A tired examiner reads
+  it without slowing down.
+- **3** = Readable but slow. A tired examiner has to pause on
+  one or two words, but reconstructs them without help.
+- **2** = Readable only because context fills the gap. A tired
+  examiner would not award the mark on the handwriting alone —
+  the markscheme or the surrounding answer had to do work.
+- **1** = Heroic reconstruction needed. The transcript had
+  `[illegible]` markers, or the examiner would have to guess
+  what was meant from partial letters.
+- **0** = Genuinely cannot read. Multiple words or the whole
+  answer are unreadable.
+
+**ocr_mode is derived from legibility_score:**
+- score 4-5 → `clear_read`
+- score 3 → `minor_uncertainty`
+- score 2 → `context_inferred`
+- score 0-1 → `unreadable`
+
+**Do NOT use `forensic_reconstruction` (or any other label)**
+— the four options above are the only valid values.
+
+**Do NOT modify the per-criterion marking based on legibility.**
+If the transcript says `[illegible]` and you NOT_AWARD a
+criterion because of it, note that in the criterion's
+justification (and in the Assessor notes section's "OCR
+blockers" list) — do NOT inflate the legibility score to make
+the marking look less risky. Legibility reflects the
+handwriting; marking reflects the markscheme. They are
+independent.
+
+**Do NOT inflate the score because the markscheme was
+forgiving.** A question where the student wrote one word and
+it happened to match the rubric still gets a low legibility
+score if that one word was hard to read.
+
+**student_feedback is written to Will, not about Will.** Use
+second person ("Your handwriting on the Q1.5 percentage-yield
+calculation was hard to read — the '92.8' looked like '92.0'
+at first glance. Print your key numbers more clearly."),
+not third person ("The student would benefit from..."). Be
+specific: name the question, the kind of error, and the
+fix. Skip the praise; Will doesn't need it. One short
+sentence is enough.
+
+#### 4. Question summary (2-3 lines)
 
 - **Total marks awarded for this question:** `<sum of marks
   awarded for all criteria, integer>` out of `<total marks for
@@ -191,6 +261,9 @@ NOT_APPLICABLE with a one-line justification.
 - **One sentence on what cost the most marks** (e.g. "Student got
   4/8 on Q1, with 3 marks lost on the percentage-yield calculation
   where they did not set up the equation correctly").
+- **Legibility summary (one short sentence):** e.g. "Question
+  was generally legible (score 4/5); the calculation on Q1.5
+  was the only slow spot."
 
 ### Summary file shape
 
@@ -210,7 +283,7 @@ awarded | Notes`. One row per Q1-Q{{ question_count }}. Notes column is a
 one-sentence summary of the question's marking (e.g. "Strong on the
 conceptual prose, lost marks on calculations").
 
-#### 3. Cross-paper observations (3-5 short paragraphs, STUDENT-FACING)
+#### 4. Cross-paper observations (3-5 short paragraphs, STUDENT-FACING)
 
 A few short paragraphs (each 2-4 sentences) on cross-cutting
 patterns you noticed while marking. The student reads this on the
@@ -226,7 +299,7 @@ and keep it substantive. Patterns to cover:
   topic? (E.g. "You wrote IDK on 3 of 5 calculation questions in
   Q4, but attempted all the prose questions in Q5.")
 
-#### 4. Assessor notes (assessor-only; not on the public page)
+#### 5. Assessor notes (assessor-only; not on the public page)
 
 The following paragraphs are pipeline meta. They describe the OCR +
 marking chain's behaviour, not the student's work. They live in
@@ -237,7 +310,15 @@ they are NOT surfaced on the rendered feedback page.
   criterion because the transcript said `[illegible]` or had low
   confidence, list the affected questions here. This is the "human
   review" list — these are the marks that should be re-checked
-  against the original photos by a human.
+  against the original photos by a human. Cross-reference each
+  entry with the question's `legibility_score` and `ocr_mode`
+  (e.g. "Q07.2 (legibility_score=1, ocr_mode=unreadable): the
+  one word after 'different sized' is illegible; recheck the
+  photo").
+- **Legibility overview:** A 1-2 sentence summary of legibility
+  across the paper (e.g. "Q3 was the cleanest (5/5); Q7 had
+  the most illegible spots (3/5 average, 1/5 on Q7.2)."). This
+  is a rollup — the per-Q scores are in the Q-NN files.
 - **Marking uncertainty:** Criteria where you had to NOT_AWARD with
   a justification like "could go either way" or "the transcript is
   ambiguous" go here. These are the marks the *marking model* is
