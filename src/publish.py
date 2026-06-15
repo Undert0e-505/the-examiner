@@ -331,12 +331,27 @@ def parse_summary(slug: str) -> dict:
 
     # Observations — pull the paragraphs from "## 3. Cross-paper observations"
     # (student-facing: strengths, IDK pattern, prose-vs-calculation)
-    obs = extract_section(content, "## 3. Cross-paper observations", "## 4.")
+    # Observations - pull the paragraphs from "## Cross-Paper Observations"
+    # (student-facing: strengths, IDK pattern, prose-vs-calculation).
+    # The current Codex output writes the H2 header without a number
+    # ("## Cross-Paper Observations"), but the mark prompt asks for
+    # "#### 3. Cross-paper observations" (H4, with number). Try the
+    # current H2-no-number form first (matches current output), then
+    # fall back to the prompt's H4-numbered form (for older SUMMARYs).
+    obs = extract_section(content, "## Cross-Paper Observations", "## ")
+    if not obs:
+        obs = extract_section(content, "## 3. Cross-paper observations", "## 4.")
+    if not obs:
+        obs = extract_section(content, "#### 3. Cross-paper observations", "#### 4.")
 
     # Assessor notes (pipeline meta: OCR blockers, marking uncertainty,
     # pipeline verdict). Rendered as a collapsed dropdown at the bottom
     # of the per-assessment page; never shown to the student.
-    assessor_notes = extract_section(content, "## 4. Assessor notes", None)
+    assessor_notes = extract_section(content, "## Assessor Notes", None)
+    if not assessor_notes:
+        assessor_notes = extract_section(content, "## 4. Assessor notes", None)
+    if not assessor_notes:
+        assessor_notes = extract_section(content, "#### 4. Assessor notes", None)
 
     # Backwards-compat: legacy SUMMARY.md files used "## 4. Pipeline verdict"
     # without a separate assessor-notes section. If we didn't find a
@@ -344,6 +359,8 @@ def parse_summary(slug: str) -> dict:
     # so older SUMMARYs still render their pipeline meta into the dropdown.
     if not assessor_notes:
         assessor_notes = extract_section(content, "## 4. Pipeline verdict", None)
+        if not assessor_notes:
+            assessor_notes = extract_section(content, "#### 4. Pipeline verdict", None)
 
     return {
         "paper_code": paper_code,
@@ -401,10 +418,20 @@ def parse_question_marking(slug: str, q_label: str) -> dict:
         c = parse_criterion_block(block)
         if c: criteria.append(c)
 
-    # Question summary
+    # Question summary. The current Codex output writes the H2
+    # header as "## Question Summary" (no number, capital S); the
+    # mark prompt asks for "#### 3. Question summary" (H4,
+    # lowercase s, with number). Try the current form first, then
+    # the prompt's form for older transcripts.
     q_summary = ""
-    m = re.search(r"## 3\. Question summary\s*\n+([^#]+)", content, re.DOTALL)
+    m = re.search(r"## Question Summary\s*\n+([^#]+)", content, re.DOTALL)
     if m: q_summary = m.group(1).strip()
+    if not q_summary:
+        m = re.search(r"## 3\. Question summary\s*\n+([^#]+)", content, re.DOTALL)
+        if m: q_summary = m.group(1).strip()
+    if not q_summary:
+        m = re.search(r"#### 3\. Question summary\s*\n+([^#]+)", content, re.DOTALL)
+        if m: q_summary = m.group(1).strip()
 
     return {
         "qnum": qnum,
