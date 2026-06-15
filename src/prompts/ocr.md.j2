@@ -1,0 +1,168 @@
+You are operating inside a disposable Codex sandbox at
+`{{ sandbox_dir }}`. The real repo is at `{{ real_repo }}`. The
+sandbox is a fresh copy of the real repo (via the codex_lane
+wrapper's `-UseCopy` mode) with the `origin` remote removed.
+**Do not touch the real repo.** All work happens inside the sandbox.
+
+## Task
+
+Transcribe the handwritten student answers on {{ pages | length }} page{{ '' if pages | length == 1 else 's' }}
+from a GCSE exam paper, using Codex's vision capability.
+
+{%- if batch_id %}
+
+This is **Batch {{ batch_id }}** in a full-batch OCR run. The photos
+for this paper have been split into multiple batches to keep each
+Codex call manageable. This batch handles the pages listed below;
+other batches handle the remaining pages.
+
+{%- endif %}
+
+The {{ pages | length }} pages for this batch are:
+
+{%- for p in pages %}
+
+  `intake/{{ slug }}/{{ "%02d" | format(p.number) }}.jpg`{% if p.context %}  ({{ p.context }}){% endif %}
+{%- endfor %}
+
+**Do not OCR any other photos in the intake folder.** Photos for
+other pages of this paper are handled by other batches.
+
+## What to produce
+
+{{ pages | length }} files, one per page, with the exact filenames:
+
+{%- for p in pages %}
+
+  `intake/{{ slug }}/{{ "%02d" | format(p.number) }}.transcript.md`
+{%- endfor %}
+
+**Write each transcript file IMMEDIATELY after producing it**, in
+the listed order (lowest page number first). This is important
+because Codex calls can be interrupted — partial progress on disk
+is more useful than losing all transcripts to a single interruption
+near the end.
+
+**Special case for `01.jpg`**: this is the COVER PAGE. It is not a
+question page — it is the AQA/Edexcel/OCR exam cover with the
+candidate name boxes, the marking grid, the exam title, the time
+allowed, and the total marks. The expected output for this file
+is a brief description of what the cover page shows, not a
+transcript of handwritten answers (there should be no handwriting
+on the cover, or only the candidate name if the student wrote it).
+Keep this transcript file SHORT — page identification + a one-paragraph
+description of the cover's contents + the verdict line. Do not
+invent handwriting that isn't there.
+
+For the other pages, each transcript file must contain three
+sections, in this order:
+
+### 1. Page identification (4-6 lines)
+
+Read the printed exam page first. Report:
+- The paper code printed at the bottom of the page
+- The page number printed at the top of the page
+- The question numbers visible on the page
+- The total marks available on the page
+- One sentence describing the printed context (the question wording,
+  any apparatus table, any diagram referenced). Do not transcribe
+  the printed question word-for-word — a short summary is fine.
+
+### 2. Verbatim transcript of the student's handwritten answers
+
+For each answer space on the page, in order, transcribe the
+handwriting **verbatim** — every word, every crossed-out word, every
+margin scribble, every arithmetic step, every annotation, every
+diagram. Conventions:
+- Wrap each answer in a `### Q... (N marks)` header.
+- For text: write the literal words, including spelling mistakes,
+  grammar mistakes, and missing punctuation. Do NOT correct to
+  proper English.
+- For chemistry symbols, equations, formulas, or working: write
+  them in inline code with backticks, using plain-text
+  approximations (e.g. `NH4Cl`, `2Na + Cl2 -> 2NaCl`,
+  `proton number: 12`, `nucleon number: 24`). Preserve the line
+  breaks of the working.
+- For numbers and arithmetic: write them exactly as written, even
+  if the arithmetic is wrong.
+- For ticked MCQ options: write `Ticked: <letter>`. If multiple
+  options are ticked or ambiguous, note the uncertainty.
+- For diagrams or drawings (e.g. particle diagrams, electronic
+  configurations, dot-and-cross diagrams, graphs with plotted
+  points and drawn lines): describe in one or two short sentences
+  in brackets. Do not attempt to interpret diagrams as text. For
+  graphs: report the number of plotted points (count carefully),
+  their approximate coordinates, the equation and shape of any
+  drawn line(s), and the coordinates of any intersection. The
+  marking pass needs enough detail to award markscheme points for
+  best-fit lines, plotted crosses, and read-off values.
+- For ticked statements in a list: write `Ticked: <statement>`.
+- For illegible words or numbers: write `[illegible]` and note the
+  position. Do not guess.
+- For empty answer spaces: write `(no answer written)`.
+- For crossed-out words: write the original word followed by
+  `(crossed out)`.
+- For scribbles / doodles in margins: ignore.
+
+**CRITICAL — DO NOT REWRITE OR CORRECT THE STUDENT'S WORK.** This
+applies to prose, arithmetic, and chemistry. The marking pass is a
+separate step that compares the transcript to the markscheme; we
+need the transcript to be a faithful record of the page, not a
+sanitised version.
+
+After the verbatim transcript, add one short sentence in italics
+starting `*Reading note:*` describing your confidence. Be specific
+about which words or numbers you are sure of and which you are not.
+For pages with diagrams or graphs, specifically note whether the
+diagram description is detailed enough to mark against (counts of
+plotted points, approximate coordinates, drawn-line shape, etc.).
+
+### 3. Per-page verdict (one sentence)
+
+At the end of each transcript file, after the verbatim section
+and the confidence note, add a single line:
+
+`*Verdict:* easy | medium | hard`
+
+…where "easy" means the handwriting was clear and the page was
+trivial to read, "medium" means some interpretation was needed,
+and "hard" means significant uncertainty that warrants a human
+check.
+
+## Hard rules
+
+- **Do not commit.** Do not push. Do not `git add` anything.
+- **Do not run any network command.** No curl, no pip install, no
+  git fetch, no `codex login`, nothing.
+- **Do not modify any file outside the transcript files listed
+  above.** Specifically:
+  - Do not edit code.
+  - Do not edit docs.
+  - Do not edit `MANIFEST.md`, `SOURCE-MAPPING.txt`, or any
+    photo in the intake folder.
+- **Do not OCR any photo other than the {{ pages | length }}
+  listed above.**
+- **Do not invent text that is not in the photo.** Verbatim means
+  verbatim. If you cannot read a word, write `[illegible]`. Do not
+  fill in plausible-looking but unverified words.
+- **Do not rewrite, paraphrase, or "improve" the student's prose,
+  arithmetic, or chemistry.** Write what is on the page, even if
+  it is rough.
+- **If you cannot do this task for any reason**, write `BLOCKED` at
+  the top of EACH transcript file you have not yet completed, and
+  explain in one paragraph why. Do not silently fall back to a
+  half-done transcript.
+
+## After completing
+
+Report in your final message (the one that goes to the wrapper's
+stdout, NOT to a file):
+- The paths of all {{ pages | length }} files you created, in order, with their
+  line counts.
+- One sentence on whether you stayed inside the sandbox.
+- One sentence on whether you made any network calls.
+- The first 5 lines of the highest-numbered transcript file (the
+  last page), so the orchestrator can sanity-check the output
+  without opening the file.
+- A one-line summary across the {{ pages | length }} pages: how many were
+  easy/medium/hard per your own verdicts.

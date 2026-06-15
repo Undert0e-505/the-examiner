@@ -3,22 +3,43 @@ src/mark_batch.py - thin wrapper around the codex_lane CLI for marking runs.
 
 This is NOT a standalone Python marking script. It is a small driver that:
 
-  1. Verifies that `intake/<paper-slug>/NN.transcript.md` files exist (the OCR pass must have completed first - run `ocr_batch.py` first if it hasn't). It also verifies that `papers/<paper-slug>/markscheme.json` exists, since the marking prompt needs the rubric as input.
-  2. Reads an already-written prompt from `<spec>/04_CODEX_PROMPT.md` in the codex_sandboxes spec tree. (The script does NOT generate the prompt automatically - that is the safety design. The prompt is the IP and the human writes it, with the template in `docs/MARKING-PROMPT-TEMPLATE.md` as a guide, before each run.)
-  3. Invokes the codex_lane PowerShell wrapper to run Codex in a disposable sandbox, with the prompt from step 2. The wrapper runs Codex, captures the per-question marking files + SUMMARY.md, and writes a CODEX_RESULT.md. The wrapper never touches the real repo - the marking pass is sandboxed end-to-end.
-  4. Copies the produced `Q*.marking.md` and `SUMMARY.md` files from the sandbox back to the real repo's `assessments/<paper-slug>/` directory. Old marking files at the same paths are preserved as `*.marking.md.bak`.
+  1. Verifies that `intake/<paper-slug>/NN.transcript.md` files exist
+     (the OCR pass must have completed first - run the orchestrator or
+     `ocr_batch.py` first if it hasn't). It also verifies that
+     `papers/<paper-slug>/markscheme.json` exists, since the marking
+     prompt needs the rubric as input.
+  2. Auto-generates the Codex prompt from the Jinja template
+     `src/prompts/mark.md.j2`, with the per-paper metadata from the
+     markscheme and the transcript list. (Per Aaron's policy on
+     2026-06-15, the per-run human-authored prompt is retired; the
+     template is the canonical prompt.)
+  3. Invokes the codex_lane PowerShell wrapper to run Codex in a
+     disposable sandbox, with the generated prompt. The wrapper runs
+     Codex, captures the per-question marking files + SUMMARY.md, and
+     writes a CODEX_RESULT.md. The wrapper never touches the real repo -
+     the marking pass is sandboxed end-to-end.
+  4. Copies the produced `Q*.marking.md` and `SUMMARY.md` files from
+     the sandbox back to the real repo's `assessments/<paper-slug>/`
+     directory. Old marking files at the same paths are preserved as
+     `*.marking.md.bak`.
 
-For the design of why this is a thin driver and not a self-contained script, see `src/README.md`. For the prompt template, see `docs/MARKING-PROMPT-TEMPLATE.md`. For the operational doc from a real run, see `assessments/aqa-84621h-chemistry-higher-2024-05/README.md`.
+The script is also importable as a module: the top-level orchestrator
+in `src/run.py` calls `run_marking(slug, ...)` directly, without going
+through argparse. The CLI is for manual / debugging use.
 
-Usage (from the repo root):
+Usage (CLI, from the repo root):
 
     D:\\Python310\\python.exe src/mark_batch.py ^
         --slug aqa-84621h-chemistry-higher-2024-05 ^
         --job-name mark-run-aqa-2024-05 ^
-        --prompt-file D:/dev/codex-sandboxes/_specs/mark-run-aqa-2024-05/04_CODEX_PROMPT.md ^
         --yes
 
-The script does NOT need --page-order or --photos-glob - the marking pass reads the transcripts (which are already in the repo) and the markscheme (which is also already in the repo at papers/<slug>/markscheme.json). All the staging has happened by this point; the only thing left is to invoke Codex with the marking prompt and copy the marking files back.
+The script does NOT need --page-order or --photos-glob - the marking
+pass reads the transcripts (which are already in the repo) and the
+markscheme (which is also already in the repo at
+papers/<slug>/markscheme.json). All the staging has happened by this
+point; the only thing left is to invoke Codex with the marking prompt
+and copy the marking files back.
 """
 from __future__ import annotations
 
@@ -29,8 +50,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+from generate_prompts import render_mark_prompt, write_prompt_to_spec_path
+
 REPO_ROOT = Path("D:/dev/the-examiner")
-SPECS_ROOT = Path("D:/dev/codex-sandboxes/_specs")
 WRAPPER = Path("D:/dev/openclaw-scripts/codex_lane/run_codex_sandbox_job.ps1")
 
 
@@ -64,6 +86,15 @@ def verify_inputs(slug: str) -> tuple[Path, Path, list[Path]]:
     return intake_dir, markscheme_path, transcripts
 
 
+def build_prompt(slug: str) -> Path:
+    """Generate the per-run mark prompt and write it to the codex_lane
+    spec path. Returns the path of the written file. The orchestrator
+    in src/run.py calls this directly; the CLI also calls it.
+    """
+    content = render_mark_prompt(slug=slug)
+    return write_prompt_to_spec_path(content, slug, "mark")
+
+
 def run_codex_lane(
     job_name: str,
     prompt_file: Path,
@@ -82,8 +113,8 @@ def run_codex_lane(
     if not prompt_file.exists():
         raise FileNotFoundError(
             f"Prompt file not found at {prompt_file}. "
-            f"Write the prompt by hand (or copy from docs/MARKING-PROMPT-TEMPLATE.md) "
-            f"before running this script."
+            f"This is a bug in the orchestrator; the prompt should have been "
+            f"generated and written before this call."
         )
     cmd = [
         "powershell",
@@ -141,23 +172,17 @@ def parse_marks_from_summary(summary_path: Path) -> dict[str, int] | None:
     total marks awarded. Returns a dict like
     {'total_awarded': 70, 'total_available': 100, 'Q1': 8, 'Q2': 11, ...}
     or None if the SUMMARY.md doesn't have the expected shape.
-
-    This is for the operator's convenience (so they don't have to open the
-    file) - the marking pass itself doesn't depend on this.
     """
     if not summary_path.is_file():
         return None
     content = summary_path.read_text(encoding="utf-8")
     result: dict[str, int] = {}
-    # Total marks awarded: "Total marks awarded: 70"
     m = re.search(r"Total marks awarded:\s*(\d+)", content)
     if m:
         result["total_awarded"] = int(m.group(1))
-    # Total marks available: "Total marks available: 100"
     m = re.search(r"Total marks available:\s*(\d+)", content)
     if m:
         result["total_available"] = int(m.group(1))
-    # Per-Q tally from the table: "| Q1 | 10 | 8 |" -> Q1: 8
     for m in re.finditer(r"\|\s*Q(\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|", content):
         q_num = int(m.group(1))
         available = int(m.group(2))
@@ -167,102 +192,99 @@ def parse_marks_from_summary(summary_path: Path) -> dict[str, int] | None:
     return result or None
 
 
+def run_marking(
+    slug: str,
+    job_name: str,
+    *,
+    yes: bool = False,
+    progress_interval_sec: int = 60,
+    skip_copy_back: bool = False,
+) -> dict:
+    """End-to-end marking pass: verify inputs, build the prompt, run
+    codex_lane, copy marking files back. Returns a dict with the run's
+    artifacts. The orchestrator in src/run.py calls this directly; the
+    CLI just wraps it with argparse.
+
+    Returns:
+        {
+            "intake_dir": Path,
+            "markscheme_path": Path,
+            "transcripts": list[Path],
+            "prompt_file": Path,
+            "codex_returncode": int,
+            "marking_files_copied_back": list[Path] | None,
+            "tally": dict | None,
+        }
+    """
+    intake_dir, markscheme_path, transcripts = verify_inputs(slug)
+    print(f"  intake/{slug}/ has {len(transcripts)} transcripts", flush=True)
+    print(f"  papers/{slug}/markscheme.json is in place", flush=True)
+
+    prompt_file = build_prompt(slug)
+    print(f"Wrote marking prompt to {prompt_file}", flush=True)
+
+    codex = run_codex_lane(
+        job_name,
+        prompt_file,
+        yes=yes,
+        progress_interval_sec=progress_interval_sec,
+    )
+    marking_files_copied_back = None
+    if codex.returncode == 0 and not skip_copy_back:
+        sandbox_path = Path("D:/dev/codex-sandboxes") / job_name
+        marking_files_copied_back = copy_marking_back(sandbox_path, slug)
+        print(f"Copied {len(marking_files_copied_back)} marking files back", flush=True)
+    return {
+        "intake_dir": intake_dir,
+        "markscheme_path": markscheme_path,
+        "transcripts": transcripts,
+        "prompt_file": prompt_file,
+        "codex_returncode": codex.returncode,
+        "marking_files_copied_back": marking_files_copied_back,
+        "tally": parse_marks_from_summary(REPO_ROOT / "assessments" / slug / "SUMMARY.md"),
+    }
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
             "Run Codex in a disposable sandbox for per-question marking, then "
-            "copy the marking files back. The prompt is read from --prompt-file "
-            "(write it by hand, or copy from docs/MARKING-PROMPT-TEMPLATE.md)."
+            "copy the marking files back. The prompt is auto-generated from "
+            "src/prompts/mark.md.j2 + the per-paper markscheme + the transcript list."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument(
-        "--slug",
-        required=True,
-        help="Paper slug, e.g. 'aqa-84621h-chemistry-higher-2024-05'. "
-             "The marking pass reads from intake/<slug>/ and writes to "
-             "assessments/<slug>/.",
-    )
-    p.add_argument(
-        "--job-name",
-        required=True,
-        help="Name of the Codex-sandbox job, e.g. 'mark-run-aqa-2024-05'.",
-    )
-    p.add_argument(
-        "--prompt-file",
-        type=Path,
-        required=True,
-        help="Path to the 04_CODEX_PROMPT.md file. Write this by hand before "
-             "running, or copy from docs/MARKING-PROMPT-TEMPLATE.md.",
-    )
-    p.add_argument(
-        "--yes",
-        action="store_true",
-        help="Pass -Yes to the codex_lane wrapper.",
-    )
-    p.add_argument(
-        "--progress-interval-sec",
-        type=int,
-        default=60,
-        help="Heartbeat interval for the wrapper. Default 60.",
-    )
-    p.add_argument(
-        "--skip-copy-back",
-        action="store_true",
-        help="If set, don't copy the produced marking files back. Useful for "
-             "dry-runs.",
-    )
+    p.add_argument("--slug", required=True, help="Paper slug.")
+    p.add_argument("--job-name", required=True, help="Name of the Codex-sandbox job.")
+    p.add_argument("--yes", action="store_true", help="Pass -Yes to the codex_lane wrapper.")
+    p.add_argument("--progress-interval-sec", type=int, default=60, help="Heartbeat interval.")
+    p.add_argument("--skip-copy-back", action="store_true", help="Don't copy marking files back.")
     return p.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-
-    # Step 1: verify the OCR pass and the markscheme are in place.
-    print(f"Verifying inputs for {args.slug} ...", flush=True)
-    intake_dir, markscheme_path, transcripts = verify_inputs(args.slug)
-    print(f"  intake/{args.slug}/ has {len(transcripts)} transcripts", flush=True)
-    print(f"  papers/{args.slug}/markscheme.json is in place", flush=True)
-
-    # Step 2: run Codex in a disposable sandbox.
-    print(f"Running Codex in sandbox '{args.job_name}' ...", flush=True)
-    result = run_codex_lane(
-        args.job_name,
-        args.prompt_file,
+    result = run_marking(
+        slug=args.slug,
+        job_name=args.job_name,
         yes=args.yes,
         progress_interval_sec=args.progress_interval_sec,
+        skip_copy_back=args.skip_copy_back,
     )
-    if result.returncode != 0:
-        print(f"codex_lane wrapper exited with code {result.returncode}", file=sys.stderr)
-        return result.returncode
-
-    # Step 3: copy marking files back.
-    if args.skip_copy_back:
-        print("Skipping copy-back (--skip-copy-back).", flush=True)
-        return 0
-    sandbox_path = Path("D:/dev/codex-sandboxes") / args.job_name
-    print(f"Copying marking files from {sandbox_path} back ...", flush=True)
-    copied_back = copy_marking_back(sandbox_path, args.slug)
-    print(f"Copied {len(copied_back)} marking files back:", flush=True)
-    for c in copied_back:
-        print(f"  {c.name}  ({c.stat().st_size} bytes)", flush=True)
-
-    # Step 4: parse the SUMMARY.md and print the per-Q tally.
-    summary_path = REPO_ROOT / "assessments" / args.slug / "SUMMARY.md"
-    tally = parse_marks_from_summary(summary_path)
+    tally = result.get("tally")
     if tally is not None:
         print("", flush=True)
         print("Per-question tally (parsed from SUMMARY.md):", flush=True)
         total_awarded = tally.get("total_awarded", "?")
         total_available = tally.get("total_available", "?")
         print(f"  Total: {total_awarded} / {total_available}", flush=True)
-        q_keys = sorted([k for k in tally if k.startswith("Q") and not k.endswith("_available") and k[1:].isdigit()], key=lambda x: int(x[1:]))
+        q_keys = sorted(
+            [k for k in tally if k.startswith("Q") and not k.endswith("_available") and k[1:].isdigit()],
+            key=lambda x: int(x[1:]),
+        )
         for k in q_keys:
             print(f"  {k}: {tally[k]} / {tally.get(k + '_available', '?')}", flush=True)
-    else:
-        print(f"  (Could not parse SUMMARY.md at {summary_path})", flush=True)
-
-    return 0
+    return result["codex_returncode"]
 
 
 if __name__ == "__main__":
