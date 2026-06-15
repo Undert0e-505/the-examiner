@@ -1,4 +1,4 @@
-"""
+﻿"""
 src/publish.py - generate the static HTML for the per-assessment
                   pages and the dashboard index.
 
@@ -67,31 +67,59 @@ DISPLAY_NAME_OVERRIDE = "the student"   # the public name; never a real name
 KVDB_BUCKET_RE = re.compile(r"https://kvdb\.io/([A-Za-z0-9-]+)")
 
 
+def read_active_identity_name() -> str:
+    """Read private/active.json to find which identity is active.
+    Returns the name (e.g. 'aaron' or 'will')."""
+    path = PRIVATE / "active.json"
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"{path} does not exist. Create it with {{'active': 'aaron'}} "
+            f"or {{'active': 'will'}}."
+        )
+    data = json.loads(path.read_text(encoding="utf-8"))
+    name = data.get("active")
+    if name not in ("aaron", "will"):
+        raise ValueError(
+            f"{path} has active={name!r}; expected 'aaron' or 'will'."
+        )
+    return name
+
+
 def read_student_json(require_recipient: bool = False) -> dict:
-    """Read the gitignored source-of-truth file.
+    """Read the gitignored source-of-truth file for the active
+    identity.
 
     If require_recipient is True, refuse to run if the staging
     recipient email is still the placeholder. publish.py does not
     need the recipient email; email.py does.
+
+    Resolution: read private/active.json to find the active
+    identity (aaron or will), then read private/<active>.json.
     """
-    path = PRIVATE / "student.json"
+    active = read_active_identity_name()
+    path = PRIVATE / f"{active}.json"
     if not path.is_file():
         raise FileNotFoundError(
             f"{path} does not exist. Create it from the schema in "
-            f"docs/PRIVACY.md before running publish.py."
+            f"docs/PRIVACY.md, or set active.json to point at the "
+            f"other identity."
         )
     data = json.loads(path.read_text(encoding="utf-8"))
     if require_recipient:
         staging = data.get("recipient_email_staging", "")
-        if "REPLACE_WITH_AARONS_EMAIL" in staging:
-            raise RuntimeError(
-                f"{path} still has the placeholder recipient_email_staging. "
-                f"Edit the file and replace 'REPLACE_WITH_AARONS_EMAIL@example.com' "
-                f"with Aaron's real email before running email.py."
-            )
+        live = data.get("recipient_email_live", "")
+        for field, value in (("recipient_email_staging", staging), ("recipient_email_live", live)):
+            if not value or "example.com" in value or "REPLACE" in value.upper():
+                raise RuntimeError(
+                    f"{path} still has a placeholder {field}={value!r}. "
+                    f"Edit the file and replace it with a real email "
+                    f"before running email.py."
+                )
     for k in ("display_name", "first_name_for_salutation"):
         if k not in data:
             raise KeyError(f"{path} is missing the required field '{k}'.")
+    # Annotate the loaded dict with the identity name for logging.
+    data["_active_identity"] = active
     return data
 
 
@@ -345,6 +373,12 @@ def narration_rewrite(text: str) -> str:
         seg = text[i:j]
         # Possessive: Will's -> the student's (case-insensitive)
         seg = re.sub(r"(?<![A-Za-z])will's(?![A-Za-z])", "the student's", seg, flags=re.IGNORECASE)
+        # The student -> You (the narrator voice addressing the
+        # reader). The source files were written in third person
+        # ("The student wrote X"); for the published page this
+        # reads more naturally as second person ("You wrote X").
+        seg = re.sub(r"\bThe student\b", "You", seg)
+        seg = re.sub(r"\bThe student's\b", "Your", seg)
         # Plain Will/Will's in narration -> You / the student's
         # (case-sensitive: only the proper noun, not modal verb)
         seg = re.sub(r"\bWill's\b", "the student's", seg)
@@ -445,36 +479,56 @@ def render_hero_html(meta: dict, summary: dict, kvdb_bucket: str) -> str:
     total_avail = summary.get("total_available") or meta.get("total_marks_available", 0)
     total_awarded = summary.get("total_awarded") or 0
     pct = round(100 * total_awarded / total_avail) if total_avail else 0
+    # UMS grade boundaries for GCSE (AQA). Good enough for a friendly
+    # descriptor; the official conversion is in the spec.
+    if pct >= 70:   grade = "Grade 7+"
+    elif pct >= 60: grade = "Grade 6"
+    elif pct >= 50: grade = "Grade 5"
+    elif pct >= 40: grade = "Grade 4"
+    else:           grade = "Below grade 4"
     return f"""
 <section class="hero">
-  <span class="eyebrow">{esc(meta.get('board', ''))} · {esc(meta.get('spec', ''))} · {esc(meta.get('tier', ''))}</span>
-  <h1>Your {esc(meta.get('title', ''))} result</h1>
-  <div class="big">
-    <span class="awarded">{total_awarded}</span>
-    <span class="separator">/</span>
-    <span class="available">{total_avail}</span>
+  <div class="hero-left">
+    <span class="hero-eyebrow">{esc(meta.get('board', ''))} · {esc(meta.get('spec', ''))} · {esc(meta.get('tier', ''))}</span>
+    <h1>Your {esc(meta.get('title', ''))} result</h1>
+    <div class="hero-meta">
+      <span>Paper <strong>{esc(meta.get('spec', ''))}/{esc(meta.get('paper', ''))}</strong></span>
+      <span>Sitting <strong>{esc(meta.get('sitting_date', ''))}</strong></span>
+      <span>Total available <strong>{total_avail}</strong></span>
+    </div>
   </div>
-  <div class="pct">{pct}%</div>
-  <p class="meta">Paper code {esc(meta.get('spec', ''))}/{esc(meta.get('paper', ''))} · Sitting {esc(meta.get('sitting_date', ''))}</p>
+  <div class="score-block">
+    <div class="score-main">
+      <span class="awarded">{total_awarded}</span>
+      <span class="separator">/</span>
+      <span class="available">{total_avail}</span>
+    </div>
+    <div class="score-sub">
+      <span class="pct">{pct}%</span>
+      <span class="grade">{esc(grade)}</span>
+    </div>
+  </div>
 </section>
 """
 
 
 def render_question_html(q: dict, slug: str) -> str:
-    """Render one question as an accordion section."""
+    """Render one question as an accordion section. Open by default
+    on desktop (so the page doesn't feel empty on first load) and
+    closed on mobile (collapsed by default, tap to expand)."""
     qnum = q["qnum"]
     q_label = q["q_label"]
     total_a = q.get("total_awarded", 0)
     total_p = q.get("total_available", 0)
     context_html = ""
     if q.get("printed_context"):
-        context_html = f'<div class="context">{esc(q["printed_context"])}</div>'
+        context_html = f'<div class="qcontext">{esc(q["printed_context"])}</div>'
 
     # Per-criterion blocks
     crit_html_parts = []
     for c in q.get("criteria", []):
-        crit_html_parts.append(render_criterion_html(c))
-    crit_html = "\n".join(crit_html_parts) if crit_html_parts else '<p class="subq">No per-criterion details available.</p>'
+        crit_html_parts.append(render_criterion_html(c, slug=slug, qnum=qnum, cnum=len(crit_html_parts) + 1))
+    crit_html = "\n".join(crit_html_parts) if crit_html_parts else '<p class="qsub">No per-criterion details available.</p>'
 
     # Question summary
     q_summary_html = ""
@@ -482,29 +536,37 @@ def render_question_html(q: dict, slug: str) -> str:
         q_summary_html = f'<div class="qsummary">{md_to_html_simple(q["q_summary_md"])}</div>'
 
     return f"""
-<section class="qsection" data-open="false">
-  <div class="qhead" tabindex="0" role="button" aria-expanded="false" aria-controls="q-{qnum}-body">
-    <div class="qlabel">
-      <h2 class="qtitle">Question {qnum}</h2>
-      <p class="qsubtitle">{esc(q.get('subparts_covered', ''))}</p>
-    </div>
-    <div class="qscore">
-      <span class="num"><span class="awarded">{total_a}</span><span class="denom">/ {total_p}</span></span>
-    </div>
-    <svg class="chevron" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <path d="M5 7.5l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+<section class="qsection" data-open="false" id="q-{qnum}">
+  <button class="qhead" type="button" aria-expanded="false" aria-controls="q-{qnum}-body">
+    <span class="qnum">Q{qnum}</span>
+    <span class="qmain">
+      <span class="qsub">{esc(q.get('subparts_covered', ''))}</span>
+    </span>
+    <span class="qscore">
+      <span class="a">{total_a}</span>
+      <span class="s">/</span>
+      <span class="b">{total_p}</span>
+    </span>
+    <svg class="chevron" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
-  </div>
+  </button>
   <div class="qbody" id="q-{qnum}-body">
     {context_html}
-    {crit_html}
+    <div class="criteria">
+      {crit_html}
+    </div>
     {q_summary_html}
   </div>
 </section>
 """
 
 
-def render_criterion_html(c: dict) -> str:
+def render_criterion_html(c: dict, slug: str = "", qnum: str = "", cnum: int = 0) -> str:
+    """Render one criterion block with a per-criterion feedback
+    widget. The criterion_id is stable for a given (paper_slug,
+    question_number, criterion_index_within_question) so JS
+    localStorage keys don't collide across papers."""
     ao = esc(c.get("ao", ""))
     subq = esc(c.get("subq", ""))
     decision = c.get("decision", "AWARD")
@@ -512,24 +574,41 @@ def render_criterion_html(c: dict) -> str:
     verdict_class = decision   # AWARD, NOT_AWARD, NOT_APPLICABLE
     marks_a = c.get("marks_awarded", 0)
     marks_p = c.get("marks_available", 0)
+    criterion_id = f"{slug}_q{qnum}_c{cnum}" if slug and qnum else f"c{cnum}"
 
     indicative_html = ""
     if c.get("indicative"):
         items = "".join(f"<li>{esc(i)}</li>" for i in c["indicative"])
-        indicative_html = f'<div class="indicative"><span class="label">Indicative content</span><ul>{items}</ul></div>'
+        indicative_html = f'<div><span class="indicative-label">Indicative content</span><ul class="indicative">{items}</ul></div>'
 
     justification = esc(c.get("justification", ""))
 
     return f"""
-<div class="criterion {verdict_class}">
+<div class="criterion {verdict_class}" data-criterion-id="{esc(criterion_id)}" data-verdict="{verdict_class}">
   <div class="criterion-head">
-    <span class="num">×{marks_p}</span>
+    <span class="marks">×{marks_p}</span>
     {f'<span class="ao">{ao}</span>' if ao and ao != '—' else ''}
     <span class="subq">{subq}</span>
-    <span class="verdict {verdict_class}"><span class="dot"></span>{esc(decision_label)}</span>
+    <span class="verdict-pill {verdict_class}">{esc(decision_label)}</span>
   </div>
-  {indicative_html}
-  <div class="justification">{justification}</div>
+  <div class="criterion-body">
+    {indicative_html}
+    <p class="justification">{justification}</p>
+  </div>
+  <div class="feedback" data-mode="" data-criterion-id="{esc(criterion_id)}">
+    <span class="feedback-prompt"><span class="icon">↪</span> Do you agree with this mark?</span>
+    <div class="fb-actions" role="group" aria-label="Verdict">
+      <button type="button" class="fb-btn AWARD" data-mode="AWARD"><span class="icon">✓</span> Agree</button>
+      <button type="button" class="fb-btn DISAGREE" data-mode="DISAGREE"><span class="icon">↺</span> Disagree</button>
+      <button type="button" class="fb-btn NOTE" data-mode="NOTE"><span class="icon">✎</span> I read it as…</button>
+    </div>
+    <textarea class="fb-note" data-mode="disagree" placeholder="What did you write, and why does the mark seem wrong?" rows="2"></textarea>
+    <textarea class="fb-note" data-mode="note" placeholder="Tell us what you read on the page (e.g. 'I wrote 0.5 mol, not 0.05')." rows="2"></textarea>
+    <div class="fb-actions">
+      <button type="button" class="fb-save" disabled>Save feedback</button>
+      <span class="fb-status" aria-live="polite"></span>
+    </div>
+  </div>
 </div>
 """
 
@@ -549,23 +628,62 @@ def render_feedback_html(kvdb_bucket: str) -> str:
 """
 
 
+def render_rail_html(meta: dict, summary: dict, questions: list[dict]) -> str:
+    """The right-rail summary card. On desktop, sticky to the
+    viewport. On mobile, the rail would duplicate the hero, so
+    it's intentionally hidden via CSS at narrow viewports."""
+    total_avail = summary.get("total_available") or meta.get("total_marks_available", 0)
+    total_awarded = summary.get("total_awarded") or 0
+    pct = round(100 * total_awarded / total_avail) if total_avail else 0
+    n_criteria = sum(len(q.get("criteria", [])) for q in questions)
+    return f"""
+<aside class="rail">
+  <div class="rail-inner">
+    <div class="rail-card">
+      <h3>At a glance</h3>
+      <div class="total">{total_awarded}<span class="total-sub"> / {total_avail}</span></div>
+      <div class="progress" aria-label="Progress">
+        <div class="bar" style="width: {pct}%;"></div>
+      </div>
+      <p class="feedback-status" id="rail-feedback-status">
+        <span class="count" id="rail-feedback-count">0</span> / {n_criteria} criteria responded
+      </p>
+    </div>
+    <div class="rail-card">
+      <h3>Send everything</h3>
+      <p style="margin: 0; font-size: var(--t-sm); color: var(--text-muted);">Reviewed every question? Send the whole batch as one PUT.</p>
+      <button type="button" class="btn-primary" id="send-all-btn" disabled>Send all feedback</button>
+      <button type="button" class="btn-link" id="clear-all-btn">Clear all responses</button>
+    </div>
+    <div class="rail-card">
+      <h3>Notes for next time</h3>
+      <p style="margin: 0; font-size: var(--t-sm); color: var(--text-muted);">Pattern-level observations get logged to the calibration file when you save. The next assessment is marked against what you've shown you can do.</p>
+    </div>
+  </div>
+</aside>
+"""
+
+
 def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], student: dict, kvdb_bucket: str) -> str:
     hero = render_hero_html(meta, summary, kvdb_bucket)
     q_blocks = "\n".join(render_question_html(q, meta["slug"]) for q in questions)
+    rail = render_rail_html(meta, summary, questions)
 
     obs_html = ""
     if summary.get("observations_md"):
-        obs_html = f'<section class="callout note"><h2>Cross-paper observations</h2>{md_to_html_simple(summary["observations_md"])}</section>'
+        obs_html = f'<section class="callout obs"><h2>Cross-paper observations</h2>{md_to_html_simple(summary["observations_md"])}</section>'
 
     verdict_html = ""
     if summary.get("verdict_md"):
         verdict_html = f'<section class="callout"><h2>Pipeline verdict</h2>{md_to_html_simple(summary["verdict_md"])}</section>'
 
-    feedback = render_feedback_html(kvdb_bucket)
-
     updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     display_name = student.get("display_name", DISPLAY_NAME_OVERRIDE)
+    kvdb_bucket_esc = esc(kvdb_bucket or "")
 
+    # The JS below uses double-brace escaping ({{...}}) for the
+    # f-string literal braces; the single-brace {display_name}
+    # etc. are the f-string substitutions.
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -577,48 +695,44 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
   <title>{esc(display_name)} — {esc(meta.get('title', ''))}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
-<body>
+<body data-kvdb-bucket="{kvdb_bucket_esc}">
   <header class="topbar">
     <div class="topbar-inner">
-      <a href="index.html" aria-label="Back to dashboard">
-        <span class="logo">E</span>
+      <a href="index.html" class="brand" aria-label="Back to dashboard">
+        <span class="brand-mark">e</span>
         <span>examiner</span>
       </a>
-      <nav>
+      <nav class="topnav">
         <a href="index.html">All assessments</a>
       </nav>
     </div>
   </header>
-  <main>
-    {hero}
-    {q_blocks}
-    {obs_html}
-    {verdict_html}
-    {feedback}
-  </main>
+
+  {hero}
+
+  <div class="layout">
+    <main class="content">
+      <div class="section-header">
+        <h2>Per-question breakdown</h2>
+        <span class="meta">{len(questions)} questions</span>
+      </div>
+      <div class="questions">
+        {q_blocks}
+      </div>
+      {obs_html}
+      {verdict_html}
+    </main>
+    {rail}
+  </div>
+
   <footer class="footer">
-    Last updated {updated}. Automated result — for human review, contact the assessor.
+    <div class="row">Marked by Jimothy's second-pair-of-eyes pipeline · Errors flagged for human review · Last updated {updated}</div>
   </footer>
-  <script>
-    // Accordion: open on click or keyboard activation.
-    document.querySelectorAll('.qhead').forEach(function(head) {{
-      head.addEventListener('click', function() {{
-        var section = head.closest('.qsection');
-        var open = section.getAttribute('data-open') === 'true';
-        section.setAttribute('data-open', open ? 'false' : 'true');
-        head.setAttribute('aria-expanded', open ? 'false' : 'true');
-      }});
-      head.addEventListener('keydown', function(e) {{
-        if (e.key === 'Enter' || e.key === ' ') {{
-          e.preventDefault();
-          head.click();
-        }}
-      }});
-    }});
-  </script>
+
+  <script src="assets/js/feedback.js" defer></script>
 </body>
 </html>
 """
@@ -660,34 +774,34 @@ def render_index_html(batches: list[dict]) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="GCSE self-mark dashboard. Per-assessment results, feedback, and per-criterion markscheme detail.">
-  <title>GCSE self-mark dashboard</title>
+  <title>examiner — all assessments</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-inner wide">
-      <a href="index.html" aria-label="Dashboard">
-        <span class="logo">E</span>
+    <div class="topbar-inner">
+      <a href="index.html" class="brand" aria-label="Dashboard">
+        <span class="brand-mark">e</span>
         <span>examiner</span>
       </a>
-      <nav>
+      <nav class="topnav">
         <a href="index.html" class="active">Dashboard</a>
       </nav>
     </div>
   </header>
-  <main class="wide">
-    <section class="hero" style="text-align:left;">
-      <span class="eyebrow">Dashboard</span>
-      <h1>GCSE self-mark</h1>
-      <p style="color:var(--text-muted); margin-top:var(--space-3);">All assessed papers. Tap a card to see the per-criterion breakdown and give feedback per mark.</p>
-    </section>
+  <div class="dash-wrap">
+    <header class="dash-hero">
+      <span class="hero-eyebrow">Dashboard</span>
+      <h1>All assessed papers</h1>
+      <p>Open a paper to see the per-criterion breakdown and send feedback per mark.</p>
+    </header>
     {cards}
-  </main>
+  </div>
   <footer class="footer">
-    Last updated {updated}. Automated result — for human review, contact the assessor.
+    <div class="row">Marked by Jimothy's second-pair-of-eyes pipeline · Last updated {updated}</div>
   </footer>
 </body>
 </html>
@@ -746,14 +860,23 @@ def publish_index(batches: list[dict], dry_run: bool = False) -> None:
     print(f"  rendered {out}  ({len(html_doc)} bytes,  {len(batches)} assessments)")
 
 
-def copy_css(dry_run: bool = False) -> None:
+def copy_assets(dry_run: bool = False) -> None:
+    """Copy the stylesheet + client-side JS to pages/assets/.
+    The Pages workflow uploads pages/ as the artifact, so these
+    are what the live site actually serves."""
     if not SRC_CSS.is_file():
         raise FileNotFoundError(f"{SRC_CSS} does not exist. The CSS source is missing.")
+    src_js = REPO_ROOT / "src" / "assets" / "js" / "feedback.js"
+    if not src_js.is_file():
+        raise FileNotFoundError(f"{src_js} does not exist. The client-side JS is missing.")
     if not dry_run:
         PAGES_ASSETS.mkdir(parents=True, exist_ok=True)
         PAGES_ASSETS.joinpath("css").mkdir(parents=True, exist_ok=True)
+        PAGES_ASSETS.joinpath("js").mkdir(parents=True, exist_ok=True)
         shutil.copy2(SRC_CSS, PAGES_CSS)
+        shutil.copy2(src_js, PAGES_ASSETS / "js" / "feedback.js")
     print(f"  copied {SRC_CSS} -> {PAGES_CSS}")
+    print(f"  copied {src_js} -> {PAGES_ASSETS / 'js' / 'feedback.js'}")
 
 
 def discover_batches() -> list[str]:
@@ -785,8 +908,10 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(argv=None) -> int:
     args = parse_args(argv)
     student = read_student_json(require_recipient=False)
+    print(f"Active identity:    {student['_active_identity']!r}  (from private/active.json)")
     print(f"Student display name: {student['display_name']!r}")
-    print(f"Staging recipient:    {student['recipient_email_staging']!r}")
+    if student.get('recipient_email_staging'):
+        print(f"Staging recipient:    {student['recipient_email_staging']!r}")
 
     if args.batch:
         slugs = [args.batch]
@@ -820,8 +945,8 @@ def main(argv=None) -> int:
     print("Rendering dashboard index...")
     publish_index(metas, dry_run=args.dry_run)
 
-    print("Copying stylesheet...")
-    copy_css(dry_run=args.dry_run)
+    print("Copying stylesheet + client JS...")
+    copy_assets(dry_run=args.dry_run)
 
     print()
     if args.dry_run:

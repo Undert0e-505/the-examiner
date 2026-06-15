@@ -5,30 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="GCSE self-mark dashboard. Per-assessment results, feedback, and per-criterion markscheme detail.">
-  <title>GCSE self-mark dashboard</title>
+  <title>examiner — all assessments</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="topbar-inner wide">
-      <a href="index.html" aria-label="Dashboard">
-        <span class="logo">E</span>
+    <div class="topbar-inner">
+      <a href="index.html" class="brand" aria-label="Dashboard">
+        <span class="brand-mark">e</span>
         <span>examiner</span>
       </a>
-      <nav>
+      <nav class="topnav">
         <a href="index.html" class="active">Dashboard</a>
       </nav>
     </div>
   </header>
-  <main class="wide">
-    <section class="hero" style="text-align:left;">
-      <span class="eyebrow">Dashboard</span>
-      <h1>GCSE self-mark</h1>
-      <p style="color:var(--text-muted); margin-top:var(--space-3);">All assessed papers. Tap a card to see the per-criterion breakdown and give feedback per mark.</p>
-    </section>
+  <div class="dash-wrap">
+    <header class="dash-hero">
+      <span class="hero-eyebrow">Dashboard</span>
+      <h1>All assessed papers</h1>
+      <p>Open a paper to see the per-criterion breakdown and send feedback per mark.</p>
+    </header>
     <ul class="batch-list">
 <a class="batch-card" href="assessments/aqa-84621h-chemistry-higher-2024-05.html">
   <span class="badge">Result</span>
@@ -40,9 +40,9 @@
   </div>
 </a>
 </ul>
-  </main>
+  </div>
   <footer class="footer">
-    Last updated 2026-06-15 04:00 UTC. Automated result — for human review, contact the assessor.
+    <div class="row">Marked by Jimothy's second-pair-of-eyes pipeline · Last updated 2026-06-15 04:28 UTC</div>
   </footer>
 </body>
 </html>
