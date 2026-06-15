@@ -812,11 +812,37 @@ def render_question_html(q: dict, slug: str) -> str:
             f'</div>'
         )
 
-    # "Needs recheck" badge in the Q head. Only shown when the
-    # legibility data is present AND the question is flagged.
+    # Legibility indicator in the Q head. Always visible (even
+    # when the Q is collapsed), so Aaron can see the handwriting
+    # state at a glance across all 9 questions without expanding
+    # each one. Format: "L 4/5" for normal scores, with a flag
+    # class for low scores (orange tint), and the full
+    # "needs recheck" badge in addition when the score is
+    # particularly low (<= 2 or unreadable).
+    legibility_chip = ""
+    legibility_score = legibility.get("legibility_score")
+    if legibility_score is not None:
+        # Color tier: 4-5 (good) = default muted, 3 (caution) =
+        # yellow tint, 0-2 (bad) = red/orange tint
+        if legibility_score <= 2:
+            tier_class = " leg-chip-bad"
+        elif legibility_score == 3:
+            tier_class = " leg-chip-caution"
+        else:
+            tier_class = " leg-chip-good"
+        legibility_chip = (
+            f'<span class="leg-chip{tier_class}" '
+            f'title="Handwriting legibility for this question (0-5)">'
+            f'L {legibility_score}/5'
+            f'</span>'
+        )
     recheck_badge = ""
     if legibility.get("flag_for_recheck"):
-        recheck_badge = '<span class="recheck-badge" title="Handwriting was hard to read; recheck the original photo against the marking.">needs recheck</span>'
+        recheck_badge = (
+            '<span class="recheck-badge" '
+            'title="Handwriting was hard to read; recheck the original photo against the marking.">'
+            'needs recheck</span>'
+        )
 
     # Question summary
     q_summary_html = ""
@@ -831,6 +857,7 @@ def render_question_html(q: dict, slug: str) -> str:
       <span class="qsub">{esc(q_sub)}</span>
     </span>
     <span class="qscore">
+      {legibility_chip}
       {recheck_badge}
       <span class="a">{total_a}</span>
       <span class="s">/</span>
