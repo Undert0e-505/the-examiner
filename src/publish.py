@@ -702,17 +702,17 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/styles.css">
 </head>
 <body data-kvdb-bucket="{kvdb_bucket_esc}">
   <header class="topbar">
     <div class="topbar-inner">
-      <a href="index.html" class="brand" aria-label="Back to dashboard">
+      <a href="../index.html" class="brand" aria-label="Back to dashboard">
         <span class="brand-mark">e</span>
         <span>examiner</span>
       </a>
       <nav class="topnav">
-        <a href="index.html">All assessments</a>
+        <a href="../index.html">All assessments</a>
       </nav>
     </div>
   </header>
@@ -738,7 +738,7 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
     <div class="row">Marked by Jimothy's second-pair-of-eyes pipeline · Errors flagged for human review · Last updated {updated}</div>
   </footer>
 
-  <script src="assets/js/feedback.js" defer></script>
+  <script src="../assets/js/feedback.js" defer></script>
 </body>
 </html>
 """
