@@ -238,6 +238,26 @@ def run_codex_lane(
     return subprocess.run(cmd, check=False)
 
 
+def run_ollama_m3_lane(
+    photo_paths: list[Path],
+    job_name: str,
+) -> dict:
+    """Alternative to run_codex_lane: call Ollama-m3 directly with
+    all photos inline as image attachments. Writes DISCOVERY.json
+    to the same sandbox-shaped path the Codex path uses, so the
+    downstream read_discovery_json() consumer is engine-agnostic.
+
+    Returns a dict with at least a 'returncode' key (0 on success)
+    for parity with subprocess.CompletedProcess.
+    """
+    # Imported lazily to keep discover_batch importable even if
+    # the ollama adapter or its deps (requests) are missing.
+    from backends import ollama_m3
+
+    parsed = ollama_m3.discover_with_ollama_m3(photo_paths, job_name)
+    return {"returncode": 0, "stdout": json.dumps(parsed)}
+
+
 def read_discovery_json(sandbox_path: Path) -> dict:
     """Read intake/DISCOVERY.json from the sandbox. Raises
     FileNotFoundError if it's missing (Codex failed to write it)."""
@@ -331,12 +351,13 @@ def discover_batch(
     *,
     yes: bool = False,
     progress_interval_sec: int = 60,
+    engine: str = "codex",
 ) -> dict:
-    """End-to-end discovery: stage photos, run Codex, parse the
-    result, return the discovered slug + page order. The caller
-    is responsible for renaming the staged photos in the real
-    repo (via restage_real_repo_after_discovery) before running
-    the OCR pass.
+    """End-to-end discovery: stage photos, run the chosen engine
+    (Codex default, or Ollama-m3 opt-in), parse the result, return
+    the discovered slug + page order. The caller is responsible for
+    renaming the staged photos in the real repo (via
+    restage_real_repo_after_discovery) before running the OCR pass.
 
     Returns a dict:
         {
@@ -364,33 +385,43 @@ def discover_batch(
     intake_dir, copied = stage_photos_for_discovery(photo_paths, job_name)
     print(f"Staged {len(copied)} photos into {intake_dir}", flush=True)
 
-    # 2. Build prompt. Codex reads the photos from inside the
-    # sandbox at the relative path where the wrapper put them
-    # (the wrapper's -UseCopy copies the source repo verbatim,
-    # so intake/_discover/<job>/NN.jpg is in the sandbox too).
-    photos_for_prompt = [
-        {
-            "path": f"intake/{DISCOVER_INTAKE_SLUG}/{job_name}/{i+1:02d}.jpg",
-            "index": i + 1,
-        }
-        for i in range(len(copied))
-    ]
-    content = render_discover_prompt(photos=photos_for_prompt)
-    prompt_file = write_prompt_to_spec_path(content, "_", "discover")
-    print(f"Wrote discovery prompt to {prompt_file}", flush=True)
+    # 2. Build prompt (Codex path only - the Ollama path doesn't need
+    # a prompt file, it sends the photos inline).
+    if engine == "codex":
+        photos_for_prompt = [
+            {
+                "path": f"intake/{DISCOVER_INTAKE_SLUG}/{job_name}/{i+1:02d}.jpg",
+                "index": i + 1,
+            }
+            for i in range(len(copied))
+        ]
+        content = render_discover_prompt(photos=photos_for_prompt)
+        prompt_file = write_prompt_to_spec_path(content, "_", "discover")
+        print(f"Wrote discovery prompt to {prompt_file}", flush=True)
+    else:
+        prompt_file = None
 
-    # 3. Run Codex
-    codex = run_codex_lane(
-        job_name,
-        prompt_file,
-        yes=yes,
-        progress_interval_sec=progress_interval_sec,
-    )
-    if codex.returncode != 0:
-        raise RuntimeError(
-            f"codex_lane exit {codex.returncode}; discovery failed. "
-            f"Check the sandbox's CODEX_RESULT.md."
+    # 3. Run the chosen engine
+    if engine == "ollama-m3":
+        # No sandbox: we just call Ollama and write DISCOVERY.json
+        # to the same sandbox-shaped path the codex path uses.
+        rc = run_ollama_m3_lane(copied, job_name)
+        if rc["returncode"] != 0:
+            raise RuntimeError(
+                f"ollama-m3 discover failed (returncode {rc['returncode']})."
+            )
+    else:
+        codex = run_codex_lane(
+            job_name,
+            prompt_file,
+            yes=yes,
+            progress_interval_sec=progress_interval_sec,
         )
+        if codex.returncode != 0:
+            raise RuntimeError(
+                f"codex_lane exit {codex.returncode}; discovery failed. "
+                f"Check the sandbox's CODEX_RESULT.md."
+            )
 
     # 4. Read DISCOVERY.json from the sandbox
     sandbox_path = Path("D:/dev/codex-sandboxes") / job_name
@@ -478,16 +509,23 @@ def parse_args(argv=None) -> argparse.Namespace:
              "prep the intake for a subsequent OCR pass.",
     )
     p.add_argument("--yes", action="store_true", help="Skip confirmation prompt.")
+    p.add_argument(
+        "--engine", default="codex", choices=["codex", "ollama-m3"],
+        help="LLM backend: 'codex' (default, original sandbox path) or "
+             "'ollama-m3' (calls Ollama directly with photos as inline "
+             "image attachments, no sandbox).",
+    )
     return p.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
     if not args.yes:
-        print(f"This will run Codex in a disposable sandbox to discover the", flush=True)
+        print(f"This will run {args.engine} to discover the", flush=True)
         print(f"paper slug + page order for {len(args.photos)} photos.", flush=True)
         print(f"  photos: {len(args.photos)}", flush=True)
         print(f"  job name: {args.job_name}", flush=True)
+        print(f"  engine: {args.engine}", flush=True)
         resp = input("Continue? [y/N] ").strip().lower()
         if resp not in ("y", "yes"):
             print("Aborted.")
@@ -496,6 +534,7 @@ def main(argv=None) -> int:
         photo_paths=args.photos,
         job_name=args.job_name,
         yes=args.yes,
+        engine=args.engine,
     )
     print("", flush=True)
     print("=" * 60, flush=True)

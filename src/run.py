@@ -417,11 +417,16 @@ def wait_for_photos(
     return all_photos
 
 
-def auto_discover(slug: str | None, photos_hint: int | None) -> dict:
+def auto_discover(
+    slug: str | None,
+    photos_hint: int | None,
+    engine: str = "codex",
+) -> dict:
     """Run the discovery pass: wait for the latest N photos to
-    land in the cache, run Codex to identify the paper + page
-    order, rename the photos in the real repo's intake/<slug>/,
-    and return the discovered slug + page_order.
+    land in the cache, run the chosen engine (Codex default, or
+    Ollama-m3 opt-in) to identify the paper + page order, rename
+    the photos in the real repo's intake/<slug>/, and return the
+    discovered slug + page_order.
 
     `photos_hint` is the user-supplied count (e.g. 26 from
     "/mark 26 pages"). We use it as a WAIT TARGET, not a hard
@@ -479,6 +484,7 @@ def auto_discover(slug: str | None, photos_hint: int | None) -> dict:
         photo_paths=photo_paths,
         job_name=job_name,
         yes=True,
+        engine=engine,
     )
     discovered_slug = result["slug"]
     if slug is not None and slug != discovered_slug:
@@ -628,6 +634,7 @@ def run_pipeline(
     skip_codex: bool = False,
     auto_discover_mode: bool = False,
     photos_hint: int | None = None,
+    engine: str = "codex",
 ) -> dict:
     """End-to-end pipeline. Returns a dict with the run's artifacts
     and per-step status. The orchestrator's chat trigger calls this
@@ -669,7 +676,7 @@ def run_pipeline(
             summary["stages"]["auto_discover"] = "dry-run"
         else:
             try:
-                discovery = auto_discover(slug, photos_hint)
+                discovery = auto_discover(slug, photos_hint, engine=engine)
             except ValueError as e:
                 # Paper not in repo, or photos hint too small, etc.
                 print(f"  discovery failed: {e}", flush=True)
@@ -1018,6 +1025,13 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--photos-hint", type=int, default=None,
                    help="Expected number of photos for --auto-discover. If omitted, the "
                         "orchestrator uses every photo currently in the gateway cache.")
+    p.add_argument(
+        "--engine", default="codex", choices=["codex", "ollama-m3"],
+        help="LLM backend: 'codex' (default, original sandbox path) or "
+             "'ollama-m3' (calls Ollama directly with photos as inline "
+             "image attachments, no sandbox). Currently affects the "
+             "auto-discover step; OCR + marking still use Codex.",
+    )
     return p.parse_args(argv)
 
 
@@ -1056,6 +1070,7 @@ def main(argv=None) -> int:
         skip_codex=args.skip_codex,
         auto_discover_mode=args.auto_discover,
         photos_hint=args.photos_hint,
+        engine=args.engine,
     )
 
     print("", flush=True)
