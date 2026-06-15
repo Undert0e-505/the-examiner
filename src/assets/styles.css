@@ -1275,3 +1275,90 @@ code,
     animation-iteration-count: 1 !important;
   }
 }
+
+/* === Legibility === */
+.legibility {
+  max-width: 70ch;
+  margin-top: 24px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--surface-3);
+  border-left: 3px solid var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.legibility-tag {
+  align-self: flex-start;
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--surface-1);
+  border: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+.legibility-mode {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  text-transform: lowercase;
+}
+.legibility-feedback {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.legibility.flagged {
+  border-left-color: #d97706;
+  background: linear-gradient(0deg, rgba(217,119,6,0.05), rgba(217,119,6,0.05)), var(--surface-3);
+}
+.legibility.flagged .legibility-tag {
+  border-color: #d97706;
+  color: #d97706;
+}
+
+/* === Needs-recheck badge in the Q head === */
+.recheck-badge {
+  display: inline-block;
+  margin-right: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(217,119,6,0.12);
+  color: #d97706;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  text-transform: lowercase;
+  vertical-align: middle;
+}
+
+/* === Legibility roll-up table (in Assessor Notes) === */
+.legibility-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0 18px;
+  font-size: 0.85rem;
+}
+.legibility-table th,
+.legibility-table td {
+  text-align: left;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+.legibility-table th {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+.legibility-table tbody tr:hover {
+  background: var(--surface-2);
+}
