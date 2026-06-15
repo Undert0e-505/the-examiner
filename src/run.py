@@ -445,12 +445,36 @@ def run_pipeline(
             # at intake/<slug>/<page>.jpg in the real repo. The
             # OCR pass will use --skip-staging=True to read them
             # from there.
-            page_order = discovery["page_order"]
-            # photo_paths is the list of files we'll pass to OCR
-            # for reference. We use the staged files (in the
-            # real repo) as the source of truth.
+            # Build page_order parallel to photo_paths (one entry
+            # per photo). The cover photo (file_index 1) is always
+            # treated as page 1; other photos use the discovered
+            # page number. For photos with unknown page numbers,
+            # the orchestrator aborts and asks the user to fix the
+            # intake folder by hand.
+            page_numbers = discovery["page_numbers"]
             intake_dir = REPO_ROOT / "intake" / slug
             photo_paths = sorted(intake_dir.glob("*.jpg"))
+            page_order = []
+            unknown_indices = []
+            for idx in sorted(page_numbers.keys()):
+                p = page_numbers.get(idx)
+                if p is None and idx == 1:
+                    p = 1  # Cover defaults to page 1
+                if p is None:
+                    unknown_indices.append(idx)
+                page_order.append(p)
+            while len(page_order) < len(photo_paths):
+                page_order.append(None)
+                unknown_indices.append(len(page_order))
+            if unknown_indices:
+                raise ValueError(
+                    f"Discovery could not determine the printed page number "
+                    f"for {len(unknown_indices)} photo(s) at file index(es) "
+                    f"{unknown_indices}. The orchestrator refuses to guess; "
+                    f"fix the intake folder by hand (rename "
+                    f"intake/{slug}/unknown-NN.jpg to NN.jpg where NN is "
+                    f"the printed page number) and re-trigger /mark."
+                )
             print(f"  discovered slug={slug}, {len(photo_paths)} photos, "
                   f"page_order={page_order}", flush=True)
             summary["stages"]["auto_discover"] = "ok"
