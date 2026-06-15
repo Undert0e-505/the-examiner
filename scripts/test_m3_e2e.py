@@ -87,6 +87,7 @@ def page_numbers_by_index(discovery: dict) -> dict[int, int]:
 
 def main(argv=None) -> int:
     import argparse
+    import shutil
     p = argparse.ArgumentParser()
     p.add_argument(
         "--skip-ocr-and-mark", action="store_true",
@@ -95,7 +96,37 @@ def main(argv=None) -> int:
              "Used to re-run just the SUMMARY synthesis + tally + "
              "publish after fixing the script.",
     )
+    p.add_argument(
+        "--run-number", type=int, default=None,
+        help="Label for this run (e.g. 2, 3). When set, the driver "
+             "auto-snapshots the current transcripts+markings+summary "
+             "to snapshots/run_<timestamp>_<N>/ before overwriting, "
+             "so multiple runs can be compared side-by-side.",
+    )
     args = p.parse_args(argv)
+
+    # 0. Snapshot the current state (so we don't lose the previous run).
+    if args.run_number is not None:
+        ts = time.strftime("%Y-%m-%d_%H-%M-%S")
+        snap_dir = REPO / "snapshots" / f"run_{ts}_#{args.run_number}"
+        snap_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[e2e] snapshotting previous run to {snap_dir}", flush=True)
+        # Transcripts
+        for src in (REPO / "intake" / SLUG).glob("*.transcript.md"):
+            dst = snap_dir / "transcripts" / src.name
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+        # Marking + SUMMARY
+        for src in (REPO / "assessments" / SLUG).glob("*.md"):
+            dst = snap_dir / src.name
+            shutil.copy2(src, dst)
+        print(
+            f"[e2e] snapshot: "
+            f"{len(list((snap_dir / 'transcripts').glob('*.transcript.md')))} transcripts, "
+            f"{len(list(snap_dir.glob('Q*.marking.md')))} Q files, "
+            f"SUMMARY.md",
+            flush=True,
+        )
 
     # 1. Pick the 26 chemistry photos from the gateway cache
     #    (oldest-first, by LastWriteTime). We use the same selector

@@ -57,6 +57,10 @@ assessments/
 # and send from your own client)
 outbox/
 
+# Local snapshots from m3 e2e runs (regenerable by re-running the
+# e2e driver; not part of the published project).
+snapshots/
+
 # Private configuration: the student's full name, email, salutation,
 # and any other personal data the scripts need. The public repo only
 # ever sees a placeholder; the real values live here, gitignored.
