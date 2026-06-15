@@ -46,11 +46,19 @@ OUTBOX = REPO_ROOT / "outbox"
 
 
 def recipient(student: dict, mode: str) -> str:
-    """Return the recipient email based on the --to flag."""
+    """Return the recipient email based on the --to flag.
+
+    The active identity's `recipient_email_staging` and
+    `recipient_email_live` fields are what we read. When the
+    active identity is 'aaron' (default), both fields point at
+    Aaron's email, so --to staging and --to live are equivalent
+    — both go to Aaron. When the active identity is 'will',
+    staging goes to Aaron (safety) and live goes to the student.
+    """
     if mode == "staging":
-        return student["recipient_email_staging"]
+        return student.get("recipient_email_staging", "")
     if mode == "live":
-        return student["recipient_email_live"]
+        return student.get("recipient_email_live", "")
     raise ValueError(f"unknown --to mode: {mode!r}; expected 'staging' or 'live'")
 
 
@@ -148,6 +156,9 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(argv=None) -> int:
     args = parse_args(argv)
     student = read_student_json(require_recipient=True)
+
+    print(f"Active identity: {student['_active_identity']!r}  (from private/active.json)")
+    print(f"Display name:    {student['display_name']!r}")
 
     slug = args.batch
     summary = parse_summary(slug)
