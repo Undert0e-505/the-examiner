@@ -901,6 +901,64 @@ code,
   margin-bottom: 0;
 }
 
+/* Assessor notes (pipeline meta). Native <details> with custom summary
+   styling. Renders as a single-line clickable label that expands to show
+   the meta content. Visually distinct from primary callouts: muted
+   background, no border, smaller text, monospace label so the assessor
+   can tell at a glance that this is not student-facing content. */
+.assessor-notes {
+  max-width: 70ch;
+  margin-top: 24px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  border: 1px dashed var(--line);
+}
+
+.assessor-notes > summary {
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--faint);
+  list-style: none;
+  user-select: none;
+}
+
+.assessor-notes > summary::-webkit-details-marker {
+  display: none;
+}
+
+.assessor-notes > summary::before {
+  content: '\25B8'; /* right-pointing triangle */
+  display: inline-block;
+  width: 1em;
+  margin-right: 6px;
+  transition: transform 120ms ease-out;
+}
+
+.assessor-details[open] > summary::before,
+.assessor-notes[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.assessor-notes[open] > summary {
+  margin-bottom: 12px;
+  color: var(--muted);
+}
+
+.assessor-notes-body p {
+  margin: 0 0 8px;
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--faint);
+}
+
+.assessor-notes-body p:last-child {
+  margin-bottom: 0;
+}
+
 .footer {
   max-width: 1180px;
   margin: 0 auto;
