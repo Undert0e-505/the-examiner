@@ -71,18 +71,18 @@ KVDB_BUCKET_RE = re.compile(r"https://kvdb\.io/([A-Za-z0-9-]+)")
 
 def read_active_identity_name() -> str:
     """Read private/active.json to find which identity is active.
-    Returns the name (e.g. 'aaron' or 'will')."""
+    Returns the name (e.g. 'aaron' or 'student')."""
     path = PRIVATE / "active.json"
     if not path.is_file():
         raise FileNotFoundError(
             f"{path} does not exist. Create it with {{'active': 'aaron'}} "
-            f"or {{'active': 'will'}}."
+            f"or {{'active': 'student'}}."
         )
     data = json.loads(path.read_text(encoding="utf-8"))
     name = data.get("active")
-    if name not in ("aaron", "will"):
+    if name not in ("aaron", "student"):
         raise ValueError(
-            f"{path} has active={name!r}; expected 'aaron' or 'will'."
+            f"{path} has active={name!r}; expected 'aaron' or 'student'."
         )
     return name
 
@@ -96,7 +96,7 @@ def read_student_json(require_recipient: bool = False) -> dict:
     need the recipient email; send_email.py does.
 
     Resolution: read private/active.json to find the active
-    identity (aaron or will), then read private/<active>.json.
+    identity (aaron or student), then read private/<active>.json.
     """
     active = read_active_identity_name()
     path = PRIVATE / f"{active}.json"
@@ -329,38 +329,58 @@ def parse_summary(slug: str) -> dict:
             "notes": m.group(4).strip(),
         })
 
-    # Observations — pull the paragraphs from "## 3. Cross-paper observations"
-    # (student-facing: strengths, IDK pattern, prose-vs-calculation)
-    # Observations - pull the paragraphs from "## Cross-Paper Observations"
+    # Observations — pull the paragraphs from "## Cross-paper observations"
     # (student-facing: strengths, IDK pattern, prose-vs-calculation).
-    # The current Codex output writes the H2 header without a number
-    # ("## Cross-Paper Observations"), but the mark prompt asks for
-    # "#### 3. Cross-paper observations" (H4, with number). Try the
-    # current H2-no-number form first (matches current output), then
-    # fall back to the prompt's H4-numbered form (for older SUMMARYs).
-    obs = extract_section(content, "## Cross-Paper Observations", "## ")
-    if not obs:
-        obs = extract_section(content, "## 3. Cross-paper observations", "## 4.")
-    if not obs:
-        obs = extract_section(content, "#### 3. Cross-paper observations", "#### 4.")
+    # The current Codex output writes the H2 header in a few shapes
+    # depending on prompt version:
+    #   "## Cross-Paper Observations" (capital, hyphenated, no number)
+    #   "## Cross-paper observations" (lowercase p, no hyphen, no number)
+    #   "## 3. Cross-paper observations" (numbered H2, no hyphen)
+    #   "#### 3. Cross-paper observations" (numbered H4, no hyphen)
+    # The mark prompt asks for the H4-numbered form. Match any of the
+    # four (case-insensitive, optional hyphen, optional number, any
+    # trailing annotation like "(3-5 paragraphs, STUDENT-FACING)").
+    obs = ""
+    obs_pat = re.compile(
+        r"^#{2,4}\s+(?:\d+\.\s+)?[Cc]ross[\-\s][Pp]aper\s+[Oo]bservations\b[^\n]*$",
+        re.MULTILINE,
+    )
+    obs_match = obs_pat.search(content)
+    if obs_match:
+        # Find the next H2+ header after the match.
+        after = content[obs_match.end():]
+        next_header = re.search(r"^#{2,}\s+", after, re.MULTILINE)
+        obs = after[:next_header.start()].strip() if next_header else after.strip()
 
     # Assessor notes (pipeline meta: OCR blockers, marking uncertainty,
     # pipeline verdict). Rendered as a collapsed dropdown at the bottom
-    # of the per-assessment page; never shown to the student.
-    assessor_notes = extract_section(content, "## Assessor Notes", None)
-    if not assessor_notes:
-        assessor_notes = extract_section(content, "## 4. Assessor notes", None)
-    if not assessor_notes:
-        assessor_notes = extract_section(content, "#### 4. Assessor notes", None)
+    # of the per-assessment page; never shown to the student. Same
+    # # of header shapes as the observations section.
+    assessor_notes = ""
+    notes_pat = re.compile(
+        r"^#{2,4}\s+(?:\d+\.\s+)?Assessor\s+[Nn]otes\b[^\n]*$",
+        re.MULTILINE,
+    )
+    notes_match = notes_pat.search(content)
+    if notes_match:
+        after = content[notes_match.end():]
+        next_header = re.search(r"^#{2,}\s+", after, re.MULTILINE)
+        assessor_notes = after[:next_header.start()].strip() if next_header else after.strip()
 
     # Backwards-compat: legacy SUMMARY.md files used "## 4. Pipeline verdict"
-    # without a separate assessor-notes section. If we didn't find a
-    # "## 4. Assessor notes" header, fall back to the old "Pipeline verdict"
+    # without a separate assessor-notes section. If we didn't find an
+    # "Assessor notes" header, fall back to the old "Pipeline verdict"
     # so older SUMMARYs still render their pipeline meta into the dropdown.
     if not assessor_notes:
-        assessor_notes = extract_section(content, "## 4. Pipeline verdict", None)
-        if not assessor_notes:
-            assessor_notes = extract_section(content, "#### 4. Pipeline verdict", None)
+        legacy_pat = re.compile(
+            r"^#{2,4}\s+(?:\d+\.\s+)?[Pp]ipeline\s+[Vv]erdict\b[^\n]*$",
+            re.MULTILINE,
+        )
+        legacy_match = legacy_pat.search(content)
+        if legacy_match:
+            after = content[legacy_match.end():]
+            next_header = re.search(r"^#{2,}\s+", after, re.MULTILINE)
+            assessor_notes = after[:next_header.start()].strip() if next_header else after.strip()
 
     return {
         "paper_code": paper_code,
@@ -596,7 +616,7 @@ def esc(s: str) -> str:
 
 
 # Defensive name-rewrite. The gitignored assessment files are
-# scrubbed at the source level (see src/scrub_will_narration.py),
+# scrubbed at the source level (see src/scrub_student_narration.py),
 # but if a future file slips through with the student's name in
 # narrator voice, this pass replaces it before the HTML is written.
 # Verbatim quoted text (in `"`, `'`, or `` ` ``) is left alone, so

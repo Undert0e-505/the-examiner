@@ -20,7 +20,7 @@ The active-identity safety rail (per the 2026-06-15 pivot):
   --to live: email goes to the active identity's
     recipient_email_live. When active=aaron, this is also Aaron's
     address (so --to live is functionally a no-op while iterating).
-    When active=will, --to live sends to WillJOakley@gmail.com
+    When active=student, --to live sends to the student's email
     WITH Aaron always cc'd (cc is unconditional on live).
 
 The recipient_email_staging field is required. If it's still the
@@ -170,7 +170,7 @@ def recipient(student: dict, mode: str) -> str:
     `recipient_email_live` fields are what we read. When the
     active identity is 'aaron' (default), both fields point at
     Aaron's email, so --to staging and --to live are equivalent
-    — both go to Aaron. When the active identity is 'will',
+    — both go to Aaron. When the active identity is 'student',
     staging goes to Aaron (safety) and live goes to the student.
     """
     if mode == "staging":
@@ -320,7 +320,7 @@ def resolve_recipients(student: dict, mode: str) -> tuple[str, list[str], list[s
     sendmail.
 
     Per Aaron's policy (2026-06-15): --to live is unconditional on
-    Aaron being cc'd, even when active=will. Staging is never cc'd
+    Aaron being cc'd, even when active=student. Staging is never cc'd
     to anyone (it's already going to Aaron's own address).
     """
     if mode == "staging":

@@ -17,7 +17,7 @@ Per Aaron's policy on 2026-06-15:
   - Auto-send the email (no human copy-paste)
   - I write the codex prompts from comprehensive templates
   - Active-identity safety rail: active=aaron -> email to Aaron;
-    active=will --to live -> email to student + Aaron cc'd.
+    active=student --to live -> email to student + Aaron cc'd.
   - If markscheme.json is missing, abort with email to Aaron
     (subject: "Markscheme missing for <slug>") and exit. Do not
     create the page, do not push, do not email the student.
@@ -477,6 +477,24 @@ def auto_discover(slug: str | None, photos_hint: int | None) -> dict:
             f"slug={discovered_slug!r}; trusting discovery.",
             flush=True,
         )
+
+    # Clear any pre-existing photos in the destination before
+    # restaging. Auto-discover is a redo from scratch; the safety
+    # rail in restage_real_repo_after_discovery would otherwise
+    # abort with FileExistsError. The discovered_slug is the
+    # orchestrator's source of truth (Codex read the cover), not
+    # any pre-existing filename.
+    dest_dir = REPO_ROOT / "intake" / discovered_slug
+    if dest_dir.exists():
+        existing_jpgs = sorted(dest_dir.glob("*.jpg"))
+        if existing_jpgs:
+            for old in existing_jpgs:
+                old.unlink()
+            print(
+                f"  Cleared {len(existing_jpgs)} pre-existing .jpg from "
+                f"intake/{discovered_slug}/ before restage",
+                flush=True,
+            )
 
     # Rename the staged photos from intake/_discover/<job>/ to
     # intake/<slug>/<page>.jpg in the REAL repo. The OCR pass

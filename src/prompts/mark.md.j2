@@ -83,7 +83,11 @@ summary file goes last, after you have all {{ question_count }} Q-files done.
 
 ### Per-question file shape
 
-Each `QNN.marking.md` file must contain these sections, in order:
+Each `QNN.marking.md` file must contain these sections, in order.
+**Use the exact header shapes shown below** (`#### N. <Title>`)
+— the publish-time parser matches these specifically, and a
+different header level or unnumbered header will silently drop
+the section from the rendered page.
 
 #### 1. Question identification (3-5 lines)
 
@@ -267,7 +271,11 @@ sentence is enough.
 
 ### Summary file shape
 
-The `SUMMARY.md` file must contain, in order:
+The `SUMMARY.md` file must contain, in order. **Use the exact
+header shapes shown below** (`#### N. <Title>`) — the
+publish-time parser matches these specifically, and a different
+header level or unnumbered header will silently drop the
+section from the rendered page.
 
 #### 1. Paper header (3-4 lines)
 
@@ -283,7 +291,7 @@ awarded | Notes`. One row per Q1-Q{{ question_count }}. Notes column is a
 one-sentence summary of the question's marking (e.g. "Strong on the
 conceptual prose, lost marks on calculations").
 
-#### 4. Cross-paper observations (3-5 short paragraphs, STUDENT-FACING)
+#### 3. Cross-paper observations (3-5 short paragraphs, STUDENT-FACING)
 
 A few short paragraphs (each 2-4 sentences) on cross-cutting
 patterns you noticed while marking. The student reads this on the
@@ -299,7 +307,7 @@ and keep it substantive. Patterns to cover:
   topic? (E.g. "You wrote IDK on 3 of 5 calculation questions in
   Q4, but attempted all the prose questions in Q5.")
 
-#### 5. Assessor notes (assessor-only; not on the public page)
+#### 4. Assessor notes (assessor-only; not on the public page)
 
 The following paragraphs are pipeline meta. They describe the OCR +
 marking chain's behaviour, not the student's work. They live in
