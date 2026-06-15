@@ -53,6 +53,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -61,7 +62,7 @@ from pathlib import Path
 
 from generate_prompts import render_discover_prompt, write_prompt_to_spec_path
 
-REPO_ROOT = Path("D:/dev/the-examiner")
+REPO_ROOT = Path(os.environ.get("THE_EXAMINER_REPO_ROOT", "D:/dev/the-examiner"))
 GATEWAY_CACHE = Path("C:/Users/openclaw-agent/.openclaw/media/inbound")
 WRAPPER = Path("D:/dev/openclaw-scripts/codex_lane/run_codex_sandbox_job.ps1")
 DISCOVER_INTAKE_SLUG = "_discover"  # special: not a real paper slug
