@@ -1,9 +1,12 @@
 # the-examiner
 
-A second-pair-of-eyes GCSE marker for Will Oakley. The pipeline ingests
-GCSE question papers and mark schemes, runs structured extraction on
-them, and (in Phase 3+) will mark photos of Will's answers and publish
-the per-question results to GitHub Pages for him to review.
+A second-pair-of-eyes GCSE marker, built for a single GCSE student
+(this repo refers to them as "the student" throughout — see
+`docs/PRIVACY.md` for why). The pipeline ingests GCSE question
+papers and mark schemes, runs structured extraction on them, and
+(in Phase 3+) will mark photos of the student's answers and
+publish the per-question results to GitHub Pages for them to
+review.
 
 This README describes the *current* state of the pipeline. Phases that
 are not yet built are marked **(Phase 3+, not built yet)**.
@@ -14,10 +17,10 @@ are not yet built are marked **(Phase 3+, not built yet)**.
 |---|---|---|
 | 1. Indexer | Discover QP+MS PDFs in `papers/`, pair them by content, slug, write per-pair metadata + KVdb bucket | ✅ Built, committed (`b34230d`) |
 | 2. Extractor | Use `minimax-m3:cloud` to extract per-question structure from the QP and per-criterion structure from the MS, into `paper.json` and `markscheme.json` per pair | ✅ Built, committed (`97e64f1`) |
-| 3. Assessor | OCR Will's photos (GPT-4o), match to the right paper, mark using the indexed `markscheme.json` as rubric, write per-assessment folder | (Phase 3+, not built yet) |
-| 4. Publisher | Generate a per-assessment HTML page on GitHub Pages for Will to review per mark | (Phase 3+, not built yet) |
-| 5. Emailer | Send Aaron + Will the assessment URL after publish | (Phase 3+, not built yet) |
-| 6. Feedback harvester | Poll Will's per-mark responses from KVdb, write `corrections.md`, update `calibration/<subject>.md` | (Phase 3+, not built yet) |
+| 3. Assessor | OCR the student's photos (GPT-4o), match to the right paper, mark using the indexed `markscheme.json` as rubric, write per-assessment folder | (Phase 3+, not built yet) |
+| 4. Publisher | Generate a per-assessment HTML page on GitHub Pages for the student to review per mark | (Phase 3+, not built yet) |
+| 5. Emailer | Send Aaron + the student the assessment URL after publish | (Phase 3+, not built yet) |
+| 6. Feedback harvester | Poll the student's per-mark responses from KVdb, write `corrections.md`, update `calibration/<subject>.md` | (Phase 3+, not built yet) |
 
 ## What's in `papers/` (today)
 
@@ -122,16 +125,21 @@ seeded, indexer + extractor are written and committed, KVdb buckets
 are auto-generated. Pages is still not enabled (deferred to when the
 publisher is written).
 
-## Will Oakley
+## The student
 
-See `docs/WILL.md` for the longer writeup. He's WillJOakley in
-email, Will Oakley in person, younger brother of Matthew (don't mix
-them up), sitting GCSEs in 2026 (this year — the May–June 2026
-sittings).
+The system is built for one student. The student's full name, email
+address, and any other identifying details are **not in this repo** —
+they live in the gitignored `private/student.json` file, which the
+scripts read at runtime. See `docs/PRIVACY.md` for the full policy
+(what's allowed, what's not, what to do if a secret is committed by
+accident).
+
+The system is the student's second pair of eyes: they self-mark first,
+this pipeline is the independent second mark.
 
 ## Model choice
 
 - **PDF text extraction** → pymupdf text layer. No LLM. Typeset text, no handwriting, no need.
 - **Structured question + mark-scheme extraction** (Phase 2) → `minimax-m3:cloud` via Ollama. This is where the model earns its keep: long-context structured JSON output of question stems, extracts, AO tags, indicative content, and spec refs. **Set up `minimax-m3:cloud` with `ollama pull minimax-m3:cloud`.**
-- **Photo OCR of Will's handwriting** (Phase 3, not built yet) → GPT-4o via the OpenAI API. State-of-the-art on messy handwriting. The two-pass + Will-feedback loop is the only thing that makes this reliable.
+- **Photo OCR of the student's handwriting** (Phase 3, not built yet) → GPT-4o via the OpenAI API. State-of-the-art on messy handwriting. The two-pass + student-feedback loop is the only thing that makes this reliable.
 - **Marking** (Phase 3, not built yet) → GPT-4o. The marking pass is where the model needs to be smart, not just fast.

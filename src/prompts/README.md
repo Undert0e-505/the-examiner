@@ -27,7 +27,7 @@ extractor's `extract_paper` / `extract_markscheme` do the split.
 
 ## Planned prompts (Phase 3+)
 
-- `transcribe.txt` + meta — Pass 1 OCR of a Will photo (GPT-4o).
+- `transcribe.txt` + meta — Pass 1 OCR of a photo of the student's handwriting (GPT-4o).
 - `transcribe_with_context.txt` + meta — Pass 2 OCR re-read.
 - `mark.txt` + meta — Final marking pass.
 - `calibrate.txt` + meta — Meta-prompt for updating

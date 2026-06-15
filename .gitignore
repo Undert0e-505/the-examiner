@@ -4,7 +4,7 @@
 
 # GitHub PAT (for the OpenClaw `manager` helper, not committed here)
 # Google app password (Jimothy's Gmail)
-# OpenAI API key (for GPT-4o calls — Will's handwriting)
+# OpenAI API key (for GPT-4o calls on the student's handwriting)
 
 # KVdb bucket ids are *public* (anyone with the URL can read or write
 # to a KVdb bucket). Commit them so the bucket id is reproducible
@@ -14,8 +14,8 @@
 # Copyright belongs to the awarding bodies (AQA, Pearson Edexcel, OCR,
 # eduqas, WJEC). The PDFs are kept in the local working tree and on
 # your machines (so index_papers.py and extract_questions.py can read
-# them), but they do not ship with the repo. Re-seed from
-# D:\AIProjects\Aaron\Jimothy Share\Will-papers\ on a fresh clone.
+# them), but they do not ship with the repo. Re-seed from the local
+# gcs-papers share on a fresh clone.
 papers/*.pdf
 
 # Local-only paths and per-paper extracted text
@@ -28,6 +28,15 @@ papers/*/raw/
 # Per-batch photo transcripts (rebuildable from intake/photos)
 transcripts/
 
+# Intake folder: phone photos of the student's handwritten answers and
+# the per-page OCR transcripts produced from them. NEVER committed —
+# the photos are AQA/Edexcel-copyrighted answer scripts belonging to
+# the student, and the OCR transcripts quote the student's writing
+# verbatim (spelling mistakes and all). Both belong on this machine
+# only, not in the public repo.
+intake/
+intake/**
+
 # Generated assessment output (rebuildable)
 assessments/
 
@@ -36,6 +45,12 @@ pages/assessments/
 
 # Email outbox (rebuildable)
 outbox/
+
+# Private configuration: the student's full name, email, salutation,
+# and any other personal data the scripts need. The public repo only
+# ever sees a placeholder; the real values live here, gitignored.
+# Created on first run; not present until then.
+private/
 
 # Standard Python
 __pycache__/

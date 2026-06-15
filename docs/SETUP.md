@@ -5,7 +5,7 @@ order. Re-run this doc when adding a new machine / a new contributor.
 
 ## 1. GitHub
 
-The repo is `Undert0e-505/the-examiner` (private).
+The repo is `Undert0e-505/the-examiner` (public, for Pages).
 
 **Token (local Windows Credential Manager, slot `git:https://github.com`):**
 
@@ -61,31 +61,21 @@ the cover page if the spec is unknown, but a map entry is preferred.
 ## 3. KVdb.io
 
 One bucket per indexed paper. The bucket id is the URL path component
-you'll find in `papers/<name>/kvdb-bucket.txt`. The pipeline writes Will's
-per-mark responses to `https://kvdb.io/<bucket>/will-marks` as a JSON
-array of `{question_id, mark_id, verdict, note}` objects.
+you'll find in `papers/<name>/kvdb-bucket.txt`. The pipeline writes the
+student's per-mark responses to
+`https://kvdb.io/<bucket>/student-marks` as a JSON array of
+`{question_id, mark_id, verdict, note}` objects.
 
 - KVdb API: PUT a JSON body to set, GET to read, DELETE to wipe.
 - The bucket ids are stable; we do not rotate them. If a bucket is
   ever compromised, treat all responses in it as untrusted and re-seed
   from `assessments/<batch>/assessor-marks.json`.
 
-## 4. GitHub Pages  ⚠️ DEFERRED
+## 4. GitHub Pages
 
-**Current state (2026-06-13, end of session):** Pages is still not
-enabled. The deploy workflow `.github/workflows/static.yml` is in
-the tree but has an unstaged diff reverting a previous
-`enablement: false` workaround, so the run fails at `Setup Pages`
-with:
-
-```
-##[error]Get Pages site failed. ... Error: Not Found -
-https://docs.github.com/rest/pages/pages#get-a-apiname-pages-site
-```
-
-This is expected: the action's whole purpose is to enable Pages, and
-`GITHUB_TOKEN` is **explicitly disallowed** from doing that itself
-(security gate). A human must enable Pages in the repo UI once.
+**Current state:** Pages is not yet enabled. The deploy workflow
+`.github/workflows/static.yml` is in the tree; the only thing
+missing is the human enabling Pages in the repo UI.
 
 **To finish enabling Pages (when we get to it):**
 
@@ -98,16 +88,18 @@ The pages content (`pages/assessments/<batch>.html`) is also not
 written yet — that's Phase 3's `src/publish.py`. Even after enabling
 Pages, the site will be empty until the publisher is built.
 
-**Repo must be public on a free personal account.** As of
-2026-06-13 the repo is private, and the Pages settings page shows
-"Upgrade or make this repository public to enable Pages" — the
-visibility is a hard gate, not a warning. The PDFs are
+**Repo must be public on a free personal account.** The visibility
+is a hard gate, not a warning: a private repo on a free personal
+account shows "Upgrade or make this repository public to enable
+Pages" and the Pages-enable API returns 422. The PDFs are
 copyright the awarding bodies (AQA, Pearson Edexcel) and are
 gitignored (see `.gitignore`); the repo is made public for
 Phase 3's static site, not for the PDFs. The KVdb bucket ids
 in `papers/*/kvdb-bucket.txt` are also public, but the bucket
 itself is anonymous-PUT and the polling script treats
-incoming data as untrusted (see §3).
+incoming data as untrusted (see §3). **Personal data** (the
+student's name, email, photos, transcripts) is gitignored
+alongside the PDFs; see `docs/PRIVACY.md` for the policy.
 
 **Alternative paths (skipped):**
   * Pay for GitHub Enterprise and keep the repo private — works,
@@ -120,10 +112,14 @@ incoming data as untrusted (see §3).
     manage; PAT lives in GitHub Secrets (instead of just
     Windows Credential Manager).
 
-## 5. Will's email
+## 5. The student's email
 
-`WillJOakley@gmail.com` — verified 2026-06-13. Aaron and Will both
-get the per-assessment email when Phase 5 (Emailer) is built.
+The student's email address is in `private/student.json` (gitignored).
+That file is the single source of truth for the publisher, the emailer,
+and the feedback harvester. See `docs/PRIVACY.md` for the full policy.
+
+When Phase 5 (Emailer) is built, both the repo owner and the student
+get the per-assessment email.
 
 ## 6. Telegram bot for photo intake
 
@@ -165,7 +161,7 @@ Windows Credential Manager, used by `git push`.
 
 - [x] Token in Credential Manager with Contents + Workflows R/W
 - [x] `papers/` populated with the first batch (Aaron's `Jimothy
-      Share/Will-papers/` drop on 2026-06-13 — 6 PDFs across Edexcel
+      Share/gcs-papers/` drop on 2026-06-13 — 6 PDFs across Edexcel
       Maths, AQA Chemistry, AQA English Lit)
 - [x] Phase 1 (indexer) written, committed (`b34230d`), verified
       idempotent. Three pairs indexed, three KVdb buckets generated.
@@ -174,7 +170,7 @@ Windows Credential Manager, used by `git push`.
       validate against the schema.
 - [x] `minimax-m3:cloud` pulled into local Ollama, working as the
       Phase 2 LLM. Run with `--timeout 600 --max-retries 1`.
-- [x] Will's email confirmed (`WillJOakley@gmail.com`)
+- [x] The student's email confirmed and stored in `private/student.json`
 - [x] PDFs gitignored (2026-06-13). `git rm --cached papers/*.pdf`,
       `papers/*.pdf` in `.gitignore`. PDFs stay on disk; the repo
       stops carrying them.
@@ -187,5 +183,5 @@ Windows Credential Manager, used by `git push`.
 - [ ] `OPENAI_API_KEY` in repo secret + Credential Manager
       (deferred — Phase 3)
 - [ ] First end-to-end: photo in → assessment page on Pages → email
-      out → Will's per-mark response → `corrections.md` regenerated
-      (deferred — Phase 3)
+      out → the student's per-mark response → `corrections.md`
+      regenerated (deferred — Phase 3)
