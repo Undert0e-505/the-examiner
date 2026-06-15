@@ -43,10 +43,12 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import html
+import http.client
 import json
 import re
 import shutil
 import sys
+import urllib.parse
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent   # src/publish.py -> repo root
@@ -91,7 +93,7 @@ def read_student_json(require_recipient: bool = False) -> dict:
 
     If require_recipient is True, refuse to run if the staging
     recipient email is still the placeholder. publish.py does not
-    need the recipient email; email.py does.
+    need the recipient email; send_email.py does.
 
     Resolution: read private/active.json to find the active
     identity (aaron or will), then read private/<active>.json.
@@ -156,6 +158,136 @@ def read_kvdb_bucket_from_paper(slug: str) -> str:
     if not path.is_file():
         return ""
     return path.read_text(encoding="utf-8").strip()
+
+
+def _kvdb_request(method: str, url: str, data: bytes | None = None, content_type: str | None = None, timeout: int = 10) -> tuple[int, str]:
+    """Tiny HTTP helper for the kvdb.io API. Returns (status_code, body).
+    No auth (kvdb.io is anonymous for create + PUT). Used by the
+    bucket self-healing logic.
+
+    Uses http.client (not urllib.request) because urllib.request's
+    import chain pulls in the stdlib `email` module, which would
+    shadow our src/send_email.py and cause a circular import.
+    (As of 2026-06-15, the script was renamed from email.py to
+    send_email.py for exactly this reason.)
+    """
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme != "https":
+        raise ValueError(f"only https is supported, got {parsed.scheme!r}")
+    conn = http.client.HTTPSConnection(parsed.hostname, port=parsed.port or 443, timeout=timeout)
+    try:
+        path = parsed.path
+        if parsed.query:
+            path = path + "?" + parsed.query
+        headers = {}
+        if content_type:
+            headers["Content-Type"] = content_type
+        if data is not None:
+            headers["Content-Length"] = str(len(data))
+        conn.request(method, path, body=data, headers=headers)
+        resp = conn.getresponse()
+        body = resp.read().decode("utf-8", errors="replace")
+        return (resp.status, body)
+    finally:
+        conn.close()
+
+
+def smoke_test_bucket(bucket_id: str) -> bool:
+    """Return True if the bucket is alive (smoke test), False if 404.
+
+    We PUT a tiny sentinel to https://kvdb.io/<bucket>/_smoke_test and
+    treat 200/201/204 as "bucket is alive." 404 means the bucket id
+    is invalid (either never existed or was garbage-collected). Any
+    other status raises so the orchestrator can decide.
+
+    We use PUT, not GET, because kvdb.io returns 404 for GET on a
+    key that's never been written — even in a perfectly alive
+    bucket. PUT to a never-written key returns 201 Created, which
+    is what we want here.
+    """
+    if not bucket_id:
+        return False
+    url = f"https://kvdb.io/{bucket_id}/_smoke_test"
+    status, _ = _kvdb_request("PUT", url, data=b"1", content_type="text/plain")
+    if status in (200, 201, 204):
+        # Clean up the sentinel so we don't pollute the bucket.
+        try:
+            _kvdb_request("DELETE", url)
+        except Exception:
+            pass
+        return True
+    if status == 404:
+        return False
+    raise RuntimeError(f"Unexpected status {status} smoke-testing kvdb bucket {bucket_id}")
+
+
+def create_new_bucket(recovery_email: str) -> str:
+    """Create a new kvdb.io bucket. Returns the new bucket id.
+    The recovery_email is the address that can recover the bucket
+    if the secret key is lost; for the-examiner that's Aaron's email
+    (per MEMORY.md and the 2026-06-15 rotation).
+    """
+    if not recovery_email or "@" not in recovery_email:
+        raise ValueError(
+            f"create_new_bucket needs a real email; got {recovery_email!r}. "
+            f"Pass the active identity's recipient_email_staging."
+        )
+    body = urllib.parse.urlencode({"email": recovery_email}).encode("ascii")
+    status, text = _kvdb_request(
+        "POST", "https://kvdb.io/", data=body, content_type="application/x-www-form-urlencoded"
+    )
+    if status != 201:
+        raise RuntimeError(
+            f"Failed to create kvdb bucket: status={status} body={text!r}"
+        )
+    bucket_id = text.strip()
+    if not bucket_id or "/" in bucket_id or " " in bucket_id:
+        raise RuntimeError(
+            f"kvdb bucket creation returned an unexpected id: {bucket_id!r}"
+        )
+    return bucket_id
+
+
+def write_kvdb_bucket_to_paper(slug: str, bucket_id: str) -> Path:
+    """Write a bucket id to papers/<slug>/kvdb-bucket.txt. No trailing
+    newline so the file content is just the id (consistent with the
+    pre-existing convention)."""
+    path = PAPERS / slug / "kvdb-bucket.txt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(bucket_id, encoding="utf-8")
+    return path
+
+
+def ensure_kvdb_bucket(slug: str, recovery_email: str) -> tuple[str, bool]:
+    """Make sure a live bucket id exists for the paper. Returns
+    (bucket_id, rotated) where rotated=True means we just created
+    a new one and updated the file (the previous id was 404 or
+    missing).
+
+    Workflow:
+      1. Read papers/<slug>/kvdb-bucket.txt
+      2. If absent or empty: create new bucket, write to file, return (id, True)
+      3. If present: smoke-test the id (GET a key)
+      4. If smoke-test returns 404: create new bucket, write to file, return (id, True)
+      5. If smoke-test returns 200: return (id, False) — bucket is healthy
+    """
+    existing = read_kvdb_bucket_from_paper(slug)
+    if existing:
+        if smoke_test_bucket(existing):
+            return (existing, False)
+        print(
+            f"  kvdb bucket {existing!r} for {slug} is 404; rotating to a new one",
+            flush=True,
+        )
+    else:
+        print(
+            f"  no kvdb bucket for {slug} yet; creating one",
+            flush=True,
+        )
+    new_id = create_new_bucket(recovery_email)
+    write_kvdb_bucket_to_paper(slug, new_id)
+    print(f"  new bucket id: {new_id}  (recovery email: {recovery_email})", flush=True)
+    return (new_id, True)
 
 
 def parse_summary(slug: str) -> dict:
@@ -841,7 +973,16 @@ def publish_one(slug: str, student: dict, dry_run: bool = False) -> dict:
     """Render one batch to pages/assessments/<slug>.html. Returns
     a metadata dict for the index."""
     meta = read_paper_metadata(slug)
-    kvdb_bucket = read_kvdb_bucket_from_paper(slug)
+    # Self-healing bucket: if papers/<slug>/kvdb-bucket.txt is missing
+    # or the id is 404 on kvdb.io, create a new one. The recovery email
+    # is the active identity's staging recipient (Aaron's, in practice).
+    recovery_email = student.get("recipient_email_staging", "")
+    if dry_run:
+        kvdb_bucket = read_kvdb_bucket_from_paper(slug)
+        bucket_rotated = False
+        print(f"  [dry-run] bucket: {kvdb_bucket or '(none)'}")
+    else:
+        kvdb_bucket, bucket_rotated = ensure_kvdb_bucket(slug, recovery_email)
     summary = parse_summary(slug)
 
     questions = []
@@ -875,6 +1016,8 @@ def publish_one(slug: str, student: dict, dry_run: bool = False) -> dict:
         **meta,
         "total_available": summary.get("total_available") or sum(q["total_available"] for q in questions),
         "total_awarded": summary.get("total_awarded") or sum(q["total_awarded"] for q in questions),
+        "kvdb_bucket": kvdb_bucket,
+        "bucket_rotated": bucket_rotated,
     }
 
 

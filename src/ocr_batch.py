@@ -5,39 +5,56 @@ This is NOT a standalone Python OCR script. It is a small driver that:
 
   1. Stages photos from the OpenClaw gateway cache into the repo's
      `intake/<paper-slug>/` directory, named by the printed page number on the paper.
-  2. Reads an already-written prompt from `<spec>/04_CODEX_PROMPT.md` in the codex_sandboxes spec tree. (The script does NOT generate the prompt automatically - that is the safety design. The prompt is the IP and the human writes it, with the template in `docs/OCR-PROMPT-TEMPLATES.md` as a guide, before each run.)
-  3. Invokes the codex_lane PowerShell wrapper to run Codex in a disposable sandbox, with the prompt from step 2. The wrapper runs Codex, captures the transcripts, and writes a CODEX_RESULT.md. The wrapper never touches the real repo - the OCR pass is sandboxed end-to-end.
-  4. Copies the produced `*.transcript.md` files from the sandbox back to the real repo's `intake/<paper-slug>/` directory, next to the photos. Old transcripts at the same paths are preserved as `*.transcript.md.bak`.
+  2. Auto-generates the Codex prompt from the Jinja template
+     `src/prompts/ocr.md.j2`, using the page list as the variable input.
+     (Per Aaron's policy on 2026-06-15, the per-run human-authored
+     prompt is retired; the template is the canonical prompt.)
+  3. Invokes the codex_lane PowerShell wrapper to run Codex in a
+     disposable sandbox, with the generated prompt. The wrapper runs
+     Codex, captures the transcripts, and writes a CODEX_RESULT.md. The
+     wrapper never touches the real repo - the OCR pass is sandboxed
+     end-to-end.
+  4. Copies the produced `*.transcript.md` files from the sandbox back
+     to the real repo's `intake/<paper-slug>/` directory, next to the
+     photos. Old transcripts at the same paths are preserved as
+     `*.transcript.md.bak`.
 
-For the design of why this is a thin driver and not a self-contained script, see `src/README.md`. For the prompt template, see `docs/OCR-PROMPT-TEMPLATES.md`. For the operational doc from a real run, see `intake/aqa-84621h-chemistry-higher-2024-05/OCR-RUN.md`.
+The script is also importable as a module: the top-level orchestrator
+in `src/run.py` calls `run_ocr(slug, page_numbers, page_contexts,
+batch_id, ...)` directly, without going through argparse. The CLI is
+for manual / debugging use.
 
-Usage (from the repo root):
+Usage (CLI, from the repo root):
 
     D:\\Python310\\python.exe src/ocr_batch.py ^
         --slug aqa-84621h-chemistry-higher-2024-05 ^
         --job-name ocr-run-aqa-2024-05 ^
-        --prompt-file D:/dev/codex-sandboxes/_specs/ocr-run-aqa-2024-05/04_CODEX_PROMPT.md ^
         --photos-glob "C:/Users/openclaw-agent/.openclaw/media/inbound/2026-06-14_21-00*.jpg" ^
         --page-order 11 12 14 15 17 19 20 21 22 23 24 25 26 27 28 29 ^
         --yes
 
-The --page-order is the printed page number for each photo, in the order the photos are in the gateway cache. Gaps (e.g. 13, 16, 18) are intentional and mean "no answer spaces on that page." Without --page-order, the script names files by their 1-based index in the glob, which is wrong for most runs (the photos arrive in gateway-cache order, not paper-page order, and there are usually gaps). Use --page-order to be explicit about which photo is which page.
-
-If --page-order is omitted, the script falls back to N.jpg, N+1.jpg, ... numbering. Use this only when the photos are already in paper-page order and have no gaps (rare in practice for phone-photo batches from Telegram; common for the bulk-staged PDF-batch OCR which uses a different shape, but that's a different script not yet built - see `match_paper.py` in the planned list in `src/README.md`).
+The --page-order is the printed page number for each photo, in the
+order the photos are in the gateway cache. Gaps (e.g. 13, 16, 18)
+are intentional and mean "no answer spaces on that page." Without
+--page-order, the script names files by their 1-based index in the
+glob, which is wrong for most runs (the photos arrive in
+gateway-cache order, not paper-page order, and there are usually
+gaps). Use --page-order to be explicit about which photo is which
+page.
 """
 from __future__ import annotations
 
 import argparse
-import datetime as dt
-import re
+import json
 import shutil
 import subprocess
 import sys
 from pathlib import Path
 
+from generate_prompts import render_ocr_prompt, write_prompt_to_spec_path
+
 REPO_ROOT = Path("D:/dev/the-examiner")
 GATEWAY_CACHE = Path("C:/Users/openclaw-agent/.openclaw/media/inbound")
-SPECS_ROOT = Path("D:/dev/codex-sandboxes/_specs")
 WRAPPER = Path("D:/dev/openclaw-scripts/codex_lane/run_codex_sandbox_job.ps1")
 
 
@@ -76,6 +93,26 @@ def stage_photos(slug: str, photo_paths: list[Path], page_order: list[int] | Non
     return intake_dir, copied
 
 
+def build_prompt(
+    slug: str,
+    page_numbers: list[int],
+    page_contexts: dict[int, str] | None = None,
+    batch_id: str | None = None,
+) -> Path:
+    """Generate the per-run OCR prompt and write it to the codex_lane
+    spec path. Returns the path of the written file. Raises if any
+    step fails. The orchestrator in src/run.py calls this directly;
+    the CLI also calls it.
+    """
+    content = render_ocr_prompt(
+        slug=slug,
+        page_numbers=page_numbers,
+        page_contexts=page_contexts,
+        batch_id=batch_id,
+    )
+    return write_prompt_to_spec_path(content, slug, "ocr")
+
+
 def run_codex_lane(
     job_name: str,
     prompt_file: Path,
@@ -85,14 +122,6 @@ def run_codex_lane(
 ) -> subprocess.CompletedProcess:
     """Invoke the codex_lane PowerShell wrapper. The wrapper runs Codex in
     a disposable sandbox, captures the transcripts, and writes CODEX_RESULT.md.
-
-    The wrapper takes a real prompt file at <spec>/04_CODEX_PROMPT.md (the
-    one we wrote by hand before the run, NOT auto-generated by this script -
-    see the module docstring for why). It does NOT take the photos as a CLI
-    arg - the photos are picked up via the `-UseCopy` mode of the wrapper,
-    which copies the entire working tree (including untracked files in
-    intake/<slug>/) into the sandbox. So the staging step (stage_photos above)
-    MUST happen before this step.
 
     Returns the CompletedProcess from the PowerShell invocation. The wrapper
     exits 0 on success, non-zero on a sanity-check failure (e.g. secret
@@ -106,8 +135,8 @@ def run_codex_lane(
     if not prompt_file.exists():
         raise FileNotFoundError(
             f"Prompt file not found at {prompt_file}. "
-            f"Write the prompt by hand (or copy from docs/OCR-PROMPT-TEMPLATES.md) "
-            f"before running this script."
+            f"This is a bug in the orchestrator; the prompt should have been "
+            f"generated and written before this call."
         )
     cmd = [
         "powershell",
@@ -155,49 +184,109 @@ def copy_transcripts_back(sandbox_path: Path, intake_dir: Path) -> list[Path]:
     return copied
 
 
+def run_ocr(
+    slug: str,
+    job_name: str,
+    photo_paths: list[Path],
+    page_order: list[int] | None = None,
+    page_contexts: dict[int, str] | None = None,
+    batch_id: str | None = None,
+    *,
+    yes: bool = False,
+    progress_interval_sec: int = 60,
+    skip_copy_back: bool = False,
+) -> dict:
+    """End-to-end OCR pass: stage photos, build the prompt, run codex_lane,
+    copy transcripts back. Returns a dict with the run's artifacts.
+
+    This is the function the orchestrator in src/run.py calls. The CLI
+    just wraps it with argparse.
+
+    Returns:
+        {
+            "intake_dir": Path,
+            "copied_photos": list[Path],
+            "prompt_file": Path,
+            "codex_returncode": int,
+            "transcripts_copied_back": list[Path] | None,
+        }
+    """
+    intake_dir, copied_photos = stage_photos(slug, photo_paths, page_order)
+    print(f"Staged {len(copied_photos)} photos into {intake_dir}", flush=True)
+
+    page_numbers = page_order if page_order is not None else list(range(1, len(photo_paths) + 1))
+    prompt_file = build_prompt(slug, page_numbers, page_contexts, batch_id)
+    print(f"Wrote OCR prompt to {prompt_file}", flush=True)
+
+    codex = run_codex_lane(
+        job_name,
+        prompt_file,
+        yes=yes,
+        progress_interval_sec=progress_interval_sec,
+    )
+    if codex.returncode != 0:
+        return {
+            "intake_dir": intake_dir,
+            "copied_photos": copied_photos,
+            "prompt_file": prompt_file,
+            "codex_returncode": codex.returncode,
+            "transcripts_copied_back": None,
+        }
+
+    transcripts_copied_back = None
+    if not skip_copy_back:
+        sandbox_path = Path("D:/dev/codex-sandboxes") / job_name
+        transcripts_copied_back = copy_transcripts_back(sandbox_path, intake_dir)
+        print(f"Copied {len(transcripts_copied_back)} transcripts back", flush=True)
+    return {
+        "intake_dir": intake_dir,
+        "copied_photos": copied_photos,
+        "prompt_file": prompt_file,
+        "codex_returncode": codex.returncode,
+        "transcripts_copied_back": transcripts_copied_back,
+    }
+
+
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     p = argparse.ArgumentParser(
         description=(
             "Stage photos, run Codex in a disposable sandbox for OCR, and copy "
-            "transcripts back. The prompt is read from --prompt-file (write it "
-            "by hand, or copy from docs/OCR-PROMPT-TEMPLATES.md)."
+            "transcripts back. The prompt is auto-generated from "
+            "src/prompts/ocr.md.j2 + the page list."
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     p.add_argument(
         "--slug",
         required=True,
-        help="Paper slug, e.g. 'aqa-84621h-chemistry-higher-2024-05'. "
-             "Photos and transcripts will land at intake/<slug>/.",
+        help="Paper slug, e.g. 'aqa-84621h-chemistry-higher-2024-05'.",
     )
     p.add_argument(
         "--job-name",
         required=True,
-        help="Name of the Codex-sandbox job, e.g. 'ocr-run-aqa-2024-05'. "
-             "Used as the sandbox folder name and the spec subdirectory.",
-    )
-    p.add_argument(
-        "--prompt-file",
-        type=Path,
-        required=True,
-        help="Path to the 04_CODEX_PROMPT.md file. Write this by hand before "
-             "running, or copy from docs/OCR-PROMPT-TEMPLATES.md.",
+        help="Name of the Codex-sandbox job, e.g. 'ocr-run-aqa-2024-05'.",
     )
     p.add_argument(
         "--photos-glob",
         required=True,
-        help="Glob pattern for the photos in the gateway cache. Typically "
-             "'C:/Users/openclaw-agent/.openclaw/media/inbound/2026-06-14_HH-MM*.jpg' "
-             "to match the timestamp of the Telegram transmission.",
+        help="Glob pattern for the photos in the gateway cache.",
     )
     p.add_argument(
         "--page-order",
         type=int,
         nargs="*",
         default=None,
-        help="Printed page number for each photo, in glob order. Use this to "
-             "name the staged files after the paper's page numbers. Gaps are "
-             "fine - they mean 'no answer spaces on that page.'",
+        help="Printed page number for each photo, in glob order.",
+    )
+    p.add_argument(
+        "--page-contexts",
+        default=None,
+        help="JSON dict {page_num: 'short context'} for the OCR prompt. Optional.",
+    )
+    p.add_argument(
+        "--batch-id",
+        default=None,
+        help="OCR batch label, e.g. 'A' / 'B' / 'C' for split batches. Optional.",
     )
     p.add_argument(
         "--yes",
@@ -208,13 +297,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--progress-interval-sec",
         type=int,
         default=60,
-        help="How often the wrapper's heartbeat prints (in seconds). Default 60.",
+        help="Heartbeat interval for the wrapper. Default 60.",
     )
     p.add_argument(
         "--skip-copy-back",
         action="store_true",
-        help="If set, don't copy the produced transcripts back from the sandbox. "
-             "Useful for dry-runs or for inspecting the sandbox output manually.",
+        help="If set, don't copy the produced transcripts back from the sandbox.",
     )
     return p.parse_args(argv)
 
@@ -222,13 +310,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
-    # Step 1: stage photos.
-    print(f"Staging photos from {args.photos_glob} ...", flush=True)
-    # The --photos-glob is a glob pattern. We treat it as a glob relative to
-    # the gateway cache directory unless it's an absolute path that resolves
-    # under the cache. This lets the user pass either
-    # 'C:/Users/.../inbound/2026-06-14_21-00*.jpg' (absolute) or
-    # '2026-06-14_21-00*.jpg' (relative to the cache).
+    # Resolve the glob.
     glob_pattern = args.photos_glob
     if Path(glob_pattern).is_absolute():
         search_root = Path(glob_pattern).parent
@@ -241,35 +323,23 @@ def main(argv: list[str] | None = None) -> int:
         print(f"No photos matched {args.photos_glob}", file=sys.stderr)
         return 1
     print(f"Found {len(photo_paths)} photos", flush=True)
-    intake_dir, copied = stage_photos(args.slug, photo_paths, args.page_order)
-    print(f"Staged {len(copied)} photos into {intake_dir}", flush=True)
-    for c in copied:
-        print(f"  {c.name}  ({c.stat().st_size} bytes)", flush=True)
 
-    # Step 2: run Codex in a disposable sandbox.
-    print(f"Running Codex in sandbox '{args.job_name}' ...", flush=True)
-    result = run_codex_lane(
-        args.job_name,
-        args.prompt_file,
+    page_contexts = None
+    if args.page_contexts:
+        page_contexts = json.loads(args.page_contexts)
+
+    result = run_ocr(
+        slug=args.slug,
+        job_name=args.job_name,
+        photo_paths=photo_paths,
+        page_order=args.page_order,
+        page_contexts=page_contexts,
+        batch_id=args.batch_id,
         yes=args.yes,
         progress_interval_sec=args.progress_interval_sec,
+        skip_copy_back=args.skip_copy_back,
     )
-    if result.returncode != 0:
-        print(f"codex_lane wrapper exited with code {result.returncode}", file=sys.stderr)
-        return result.returncode
-
-    # Step 3: copy transcripts back from the sandbox.
-    if args.skip_copy_back:
-        print("Skipping copy-back (--skip-copy-back).", flush=True)
-        return 0
-    sandbox_path = Path("D:/dev/codex-sandboxes") / args.job_name
-    print(f"Copying transcripts from {sandbox_path} back to {intake_dir} ...", flush=True)
-    copied_back = copy_transcripts_back(sandbox_path, intake_dir)
-    print(f"Copied {len(copied_back)} transcripts back:", flush=True)
-    for c in copied_back:
-        print(f"  {c.name}  ({c.stat().st_size} bytes)", flush=True)
-
-    return 0
+    return result["codex_returncode"]
 
 
 if __name__ == "__main__":

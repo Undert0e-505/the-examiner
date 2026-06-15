@@ -1,6 +1,6 @@
 """
 src/run_publish_and_email.py - thin orchestrator that runs publish.py
-                                 and email.py in sequence.
+                                 and send_email.py in sequence.
 
 For the common case of "render the page and stage the email for
 review" you only want to call one script. This wraps both.
