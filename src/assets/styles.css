@@ -337,6 +337,21 @@ button {
 
 .callout {
   order: 4;
+  margin-top: 16px;
+}
+.callout.obs {
+  margin-top: 32px;
+  padding: 22px 24px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+.callout.obs h2 {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 400;
+  color: var(--text);
 }
 
 .rail-inner {
@@ -1175,6 +1190,15 @@ code,
     border: 0;
     border-radius: 0;
     background: transparent;
+  }
+
+  /* Push the rail's top down so it aligns with the top of Q01
+     (the first .qsection) instead of with the .section-header
+     above it. The section-header is ~31px tall (h2 at 1.5rem
+     font-size) with a 24px margin-bottom = ~55px. We use 64px
+     to give a small visual breathing room. */
+  .rail {
+    padding-top: 64px;
   }
 
   .rail-card {
