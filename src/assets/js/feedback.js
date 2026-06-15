@@ -144,20 +144,27 @@
       var url = 'https://kvdb.io/' + BUCKET + '/student-feedback';
       sendAllBtn.disabled = true;
       sendAllBtn.textContent = 'Sending…';
+      // Snapshot the ids we are about to upload, BEFORE the fetch resolves,
+      // so we can mark only those criteria as "sent" on success. Previously
+      // this loop marked every criterion on the page as "sent" — which was
+      // misleading for criteria that had no localStorage entry (and thus
+      // were silently skipped from the payload).
+      var uploadedIds = items.map(function (it) { return it.criterion_id; });
       fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ batch: BATCH_KEY, items: items, sent_at: new Date().toISOString() })
       }).then(function (r) {
         if (r.ok) {
-          document.querySelectorAll('.criterion').forEach(function (c) {
-            var fb = c.querySelector('.feedback');
-            if (fb) {
-              var s = fb.querySelector('.fb-status');
-              if (s) { s.className = 'fb-status saved'; s.textContent = '✓ sent'; }
-            }
+          uploadedIds.forEach(function (cid) {
+            var c = document.querySelector('.criterion[data-criterion-id="' + cid + '"]');
+            if (!c) return;
+            var s = c.querySelector('.fb-status');
+            if (s) { s.className = 'fb-status saved'; s.textContent = '\u2713 sent'; }
           });
-          sendAllBtn.textContent = '✓ Sent';
+          // Reset the button to a clean state so the next click is unambiguous.
+          sendAllBtn.disabled = false;
+          sendAllBtn.textContent = 'Send all feedback';
         } else {
           sendAllBtn.disabled = false;
           sendAllBtn.textContent = 'Send all feedback';
