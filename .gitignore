@@ -37,13 +37,24 @@ transcripts/
 intake/
 intake/**
 
-# Generated assessment output (rebuildable)
+# Generated assessment output (rebuildable; working tree only,
+# not the public site). Contains the per-question marking files
+# and the SUMMARY.md used by publish.py.
 assessments/
 
-# Generated HTML for Pages (rebuildable)
-pages/assessments/
+# Generated per-assessment HTML for the public Pages site.
+# These are the deployment artifacts and MUST be committed
+# (and pushed, to trigger the Pages deploy workflow). The
+# workflow uploads `pages/` as the artifact; the
+# pages/assessments/ subdir contains the per-batch pages.
+#
+# Note: the rule above ignores `assessments/` at any depth,
+# which also catches `pages/assessments/`. The negation below
+# un-blocks the per-assessment HTML specifically.
+!pages/assessments/
 
-# Email outbox (rebuildable)
+# Email outbox (rebuildable; sent emails go here, you review
+# and send from your own client)
 outbox/
 
 # Private configuration: the student's full name, email, salutation,
