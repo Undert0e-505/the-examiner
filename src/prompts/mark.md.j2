@@ -19,7 +19,47 @@ The marking process compares:
    `{{ markscheme_path }}`).
 
 …against each other, and awards marks per criterion. The
-indicative content lists *acceptable* answer points — the
+indicative content lists *acceptable* answer points
+
+**Output format constraints (PARSER-CRITICAL):**
+
+The marking output is parsed by `src/publish.py:parse_criterion_block`
+to render the public feedback page. Format drift between the prompt
+example and the parser's regex has caused a silent regression where
+every criterion block was dropped and the page rendered "No
+per-criterion details available." instead of the per-criterion
+breakdown. To prevent that:
+
+- Use exactly TWO ASCII hyphens `--` (NOT em-dash `—`, NOT
+  en-dash `–`, NOT a single hyphen `-`) between the AO label
+  and the marks count in the criterion header. Em/en dashes look
+  similar in monospace but the parser does not match them.
+- Use exactly TWO ASCII hyphens `--` (same rule) in the
+  "Sub-question this criterion applies to" line.
+- Use plain ASCII in every header, field-name, and structural
+  line. Em-dashes are fine in the `Justification` text body
+  (the parser doesn't read it), but they must NOT appear in any
+  header line, any field-name line, or any "Decision:" /
+  "Marks awarded:" line.
+- Each criterion block must start with a literal `### Criterion`
+  header at the start of the line. No leading whitespace.
+- Each field within a block must start with `**Field:**` (the
+  bold-field-name colon pattern). Field names are case-sensitive
+  and must match exactly: `Sub-question this criterion applies
+  to:`, `Indicative content:`, `Transcript section covered:`,
+  `Decision:`, `Marks awarded:`, `Justification:`.
+
+The exact byte sequence for the criterion header is:
+
+```
+### Criterion 1: AO2 -- 1 mark(s)
+```
+
+If you write `### Criterion 1: AO2 — 1 mark(s)` (em-dash), the
+parser will silently drop the criterion and the student will see
+"per-criterion details" missing on their feedback page. **Do not
+do that.**
+ — the
 student's answer does not need to match word-for-word, but the
 correct content must be there.
 
@@ -106,8 +146,8 @@ For EACH criterion in `markscheme.json#marks[QN].criteria`
 (where QN is q1, q2, …, q{{ question_count }}), produce a block with this shape:
 
 ```
-### Criterion N: <ao> — <marks> mark(s)
-**Sub-question this criterion applies to:** <qN.X — your best
+### Criterion N: <ao> -- <marks> mark(s)
+**Sub-question this criterion applies to:** <qN.X -- your best
 guess based on the indicative content and the transcript>
 **Indicative content:** <bullet list from the markscheme>
 **Transcript section covered:** <which transcript file and
@@ -275,7 +315,21 @@ The `SUMMARY.md` file must contain, in order. **Use the exact
 header shapes shown below** (`#### N. <Title>`) — the
 publish-time parser matches these specifically, and a different
 header level or unnumbered header will silently drop the
-section from the rendered page.
+section from the rendered page. Specifically, the four section
+headers MUST be exactly:
+
+```
+#### 1. Paper header
+#### 2. Per-question tally table
+#### 3. Cross-paper observations
+#### 4. Assessor notes
+```
+
+Lower-case, unnumbered, hyphenated ("## Cross-paper
+observations"), or differently-cased variants will be silently
+dropped. The "Cross-paper observations" section is student-
+facing; the "Assessor notes" section is assessor-only and is
+not surfaced on the public page.
 
 #### 1. Paper header (3-4 lines)
 
