@@ -40,22 +40,11 @@ letting the scripts know what name, email, and salutation to use.
 They live in `private/student.json`, which is gitignored. The
 file is the single source of truth for the scripts that need to
 know the student's identity (the feedback-page publisher, the
-emailer, the feedback harvester). The file looks like:
-
-```json
-{
-  "display_name": "the student",
-  "first_name_for_salutation": "<first name only>",
-  "full_name": "<full name>",
-  "email": "<gmail address>",
-  "notes": "Younger son, sitting GCSEs 2026, messy handwriting. Inbox-typo: <typo>. Sibling of <sibling> (the older one). Used by publish.py, email.py, poll_student_feedback.py."
-}
-```
-
-The `<...>` placeholders are filled in on this machine only.
-The `private/` directory is in `.gitignore`. The file is created
-on first run of the publisher script (or by hand, if you prefer)
-and never staged.
+emailer, the feedback harvester). The committed template is at
+`docs/student.example.json` — copy it to `private/student.json`
+and fill in the placeholders. The published-template file shows
+the schema and a filled-in worked example (with the student's
+identity in the `notes` field, for context).
 
 The scripts read it with a one-liner like:
 

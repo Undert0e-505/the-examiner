@@ -1,0 +1,11 @@
+{
+  "display_name": "the student",
+  "first_name_for_salutation": "<first name only>",
+  "full_name": "<full name>",
+  "email": "<gmail address, with the inbox-typo pattern if any>",
+  "recipient_email_staging": "REPLACE_WITH_AARONS_EMAIL@example.com",
+  "recipient_email_live": "<same as email, or different if you want to CC>",
+  "salutation_for_email": "Hey",
+  "signoff_for_email": "Jimothy",
+  "notes": "Younger son, sitting GCSEs 2026, messy handwriting. Inbox-typo: WillJOakley (not Will Oakley). Sibling of Matthew (the older one). Used by publish.py, email.py, poll_student_feedback.py. Staging email is Aaron's; flip to live before going real. The recipient_email_staging value must be replaced with Aaron's real email before publish.py / email.py will work — both scripts fail loudly if the placeholder is still set."
+}
