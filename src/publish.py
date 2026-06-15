@@ -198,10 +198,20 @@ def parse_summary(slug: str) -> dict:
         })
 
     # Observations — pull the paragraphs from "## 3. Cross-paper observations"
+    # (student-facing: strengths, IDK pattern, prose-vs-calculation)
     obs = extract_section(content, "## 3. Cross-paper observations", "## 4.")
 
-    # Verdict
-    verdict = extract_section(content, "## 4. Pipeline verdict", None)
+    # Assessor notes (pipeline meta: OCR blockers, marking uncertainty,
+    # pipeline verdict). Rendered as a collapsed dropdown at the bottom
+    # of the per-assessment page; never shown to the student.
+    assessor_notes = extract_section(content, "## 4. Assessor notes", None)
+
+    # Backwards-compat: legacy SUMMARY.md files used "## 4. Pipeline verdict"
+    # without a separate assessor-notes section. If we didn't find a
+    # "## 4. Assessor notes" header, fall back to the old "Pipeline verdict"
+    # so older SUMMARYs still render their pipeline meta into the dropdown.
+    if not assessor_notes:
+        assessor_notes = extract_section(content, "## 4. Pipeline verdict", None)
 
     return {
         "paper_code": paper_code,
@@ -210,7 +220,7 @@ def parse_summary(slug: str) -> dict:
         "total_awarded": total_awarded,
         "q_rows": q_rows,
         "observations_md": obs,
-        "verdict_md": verdict,
+        "assessor_notes_md": assessor_notes,
     }
 
 
@@ -679,9 +689,20 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
     if summary.get("observations_md"):
         obs_html = f'<section class="callout obs"><h2>Cross-paper observations</h2>{md_to_html_simple(summary["observations_md"])}</section>'
 
-    verdict_html = ""
-    if summary.get("verdict_md"):
-        verdict_html = f'<section class="callout"><h2>Pipeline verdict</h2>{md_to_html_simple(summary["verdict_md"])}</section>'
+    # Assessor-only notes (pipeline meta: OCR blockers, marking uncertainty,
+    # pipeline verdict). Rendered as a collapsed <details> so the student's
+    # primary feedback dominates the page and the meta is one click away
+    # for the assessor. The student never sees this on a normal read.
+    assessor_notes_html = ""
+    if summary.get("assessor_notes_md"):
+        # md_to_html_simple already wraps paragraphs in <p>; the <details>
+        # block uses <summary> as the clickable label.
+        assessor_notes_html = (
+            f'<details class="assessor-notes">'
+            f'<summary>Assessor notes (pipeline meta, hidden by default)</summary>'
+            f'<div class="assessor-notes-body">{md_to_html_simple(summary["assessor_notes_md"])}</div>'
+            f'</details>'
+        )
 
     updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     display_name = student.get("display_name", DISPLAY_NAME_OVERRIDE)
@@ -729,7 +750,7 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
         {q_blocks}
       </div>
       {obs_html}
-      {verdict_html}
+      {assessor_notes_html}
     </main>
     {rail}
   </div>
