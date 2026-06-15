@@ -557,7 +557,13 @@ def parse_criterion_block(block: str) -> dict | None:
         return None
     header = header_m.group(1).strip()
     # Extract AO and marks
-    ao_m = re.match(r"^(AO\d+|—|null|-)\s*-+\s*(\d+)\s*marks?(?:\(s\))?", header)
+        # Extract AO and marks. Tolerate either ASCII "--" or the
+    # Unicode em-dash U+2014 between AO and the marks count, AND
+    # in the AO group itself; Codex's markdown output drifts
+    # between the two and the previous regex silently dropped
+    # every criterion when the format changed, which rendered as
+    # a generic "No per-criterion details available." on the page.
+    ao_m = re.match(r"^(AO\d+|—|-|null|-)\s*(?:-|—)+\s*(\d+)\s*marks?(?:\(s\))?", header)
     if not ao_m:
         return None
     ao = ao_m.group(1)
