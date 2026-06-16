@@ -53,6 +53,13 @@ assessments/
 # un-blocks the per-assessment HTML specifically.
 !pages/assessments/
 
+# Note: pages/assets/photos/ is intentionally NOT gitignored.
+# The answer photos for the per-assessment feedback page are
+# committed and shipped to the public site. See
+# docs/PRIVACY.md for the policy rationale; in short, the
+# student has been consulted and is comfortable with their
+# own answer photos being visible on the feedback page.
+
 # Email outbox (rebuildable; sent emails go here, you review
 # and send from your own client)
 outbox/
