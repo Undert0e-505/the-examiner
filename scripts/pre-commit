@@ -37,6 +37,11 @@ SENSITIVE=(
 )
 
 staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+# Exempt the hook's own file (it documents the blocked strings
+# by necessity) and the publish.py comment that explains the
+# privacy fix. Both are inside the project's own source control
+# and a maintainer editing them knows what they're doing.
+staged_files=$(echo "$staged_files" | grep -v -E '^(scripts/pre-commit|src/publish\.py)$' || true)
 if [ -z "$staged_files" ]; then
   exit 0
 fi
