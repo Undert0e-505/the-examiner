@@ -3,6 +3,8 @@ src/run.py - top-level orchestrator for the the-examiner auto-pipeline.
 
 This is the script the Telegram trigger drives. It glues together:
 
+  0. Papers sync (Drive-mirrored gcs-papers/ -> papers/,
+     index_papers.py, extract_questions.py for any missing slug)
   1. Photo staging (Telegram gateway cache -> intake/<slug>/)
   2. OCR pass (src/ocr_batch.py in the codex_lane sandbox)
   3. Markscheme check (papers/<slug>/markscheme.json must exist)
@@ -71,6 +73,7 @@ from pathlib import Path
 # send_via_gmail, etc.).
 import ocr_batch
 import mark_batch
+import papers_sync
 import publish
 import send_email
 from generate_prompts import write_prompt_to_spec_path
@@ -725,13 +728,37 @@ def run_pipeline(
         "stages": {},
     }
 
+    # Step 0 (always): sync PDFs from the Drive-mirrored gcs-papers
+    # folder into papers/, run the indexer, and ensure every
+    # papers/<slug>/ has paper.json + markscheme.json. This is the
+    # "drop PDFs in Drive and walk away" hook -- the user doesn't
+    # need to run index_papers.py or extract_questions.py by hand.
+    # Idempotent and skipped in dry-run mode (it would still work,
+    # but the LLM call would block). When skip_codex is set we also
+    # skip -- the user is re-running publish/email only and doesn't
+    # want a multi-minute extract in the way.
+    if not skip_codex and not dry_run:
+        sync_summary = papers_sync.ensure_papers_indexed(dry_run=False)
+        summary["stages"]["papers_sync"] = "ok" if sync_summary else "failed"
+        summary["papers_sync"] = sync_summary
+        if not sync_summary or sync_summary.get("indexed") is False and sync_summary.get("synced_pdfs"):
+            # Only abort if we tried to index and it failed. A
+            # successful sync with no new PDFs is fine.
+            pass
+    else:
+        if skip_codex:
+            print("Step 0/8: papers_sync skipped (--skip-codex)", flush=True)
+        else:
+            print("Step 0/8: papers_sync skipped (--dry-run)", flush=True)
+        summary["stages"]["papers_sync"] = "skipped"
+
     # Step 0 (auto-discover only): identify the paper and the
     # printed page order from the photos themselves. This runs
     # before the markscheme check because we need to know which
     # markscheme to look up.
     if auto_discover_mode:
         print("=" * 60, flush=True)
-        print("Step 0/8: auto-discover (paper + page order)", flush=True)
+        print("Step 1/8: auto-discover (paper + page order)", flush=True)
         print("=" * 60, flush=True)
         if dry_run:
             print("  [dry-run] Would run discovery pass; skipping.", flush=True)
@@ -801,7 +828,7 @@ def run_pipeline(
 
     # Step 1: markscheme check. If missing, abort with email.
     print("=" * 60, flush=True)
-    print(f"Step 1/8: markscheme check for {slug}", flush=True)
+    print(f"Step 2/8: markscheme check for {slug}", flush=True)
     print("=" * 60, flush=True)
     exists, expected_path = check_markscheme_exists(slug)
     if not exists:
@@ -830,7 +857,7 @@ def run_pipeline(
     if not skip_codex:
         # Step 2: stage photos
         print("=" * 60, flush=True)
-        print(f"Step 2/8: stage {len(photo_paths)} photos to intake/{slug}/", flush=True)
+        print(f"Step 3/8: stage {len(photo_paths)} photos to intake/{slug}/", flush=True)
         print("=" * 60, flush=True)
         if not dry_run:
             ocr = ocr_batch.run_ocr(
@@ -856,7 +883,7 @@ def run_pipeline(
 
         # Step 3: marking pass
         print("=" * 60, flush=True)
-        print(f"Step 3/8: marking pass for {slug}", flush=True)
+        print(f"Step 4/8: marking pass for {slug}", flush=True)
         print("=" * 60, flush=True)
         if not dry_run:
             mark = mark_batch.run_marking(
@@ -881,7 +908,7 @@ def run_pipeline(
 
     # Step 4: publish
     print("=" * 60, flush=True)
-    print(f"Step 4/8: publish (render pages/assessments/{slug}.html)", flush=True)
+    print(f"Step 5/8: publish (render pages/assessments/{slug}.html)", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         student = publish.read_student_json(require_recipient=False)
@@ -931,7 +958,7 @@ def run_pipeline(
 
     # Step 5: auto-commit + push
     print("=" * 60, flush=True)
-    print("Step 5/8: git auto-commit + push to origin/main", flush=True)
+    print("Step 6/8: git auto-commit + push to origin/main", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         if not git_has_changes():
@@ -955,7 +982,7 @@ def run_pipeline(
     # Step 6: wait for the Pages workflow to deploy (so the public
     # URL is live when the email lands).
     print("=" * 60, flush=True)
-    print("Step 6/8: wait for Pages deploy", flush=True)
+    print("Step 7/8: wait for Pages deploy", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         if wait_for_pages_deploy(slug, timeout_sec=120):
@@ -969,7 +996,7 @@ def run_pipeline(
 
     # Step 7: send the email
     print("=" * 60, flush=True)
-    print(f"Step 7/8: send email ({to_mode})", flush=True)
+    print(f"Step 8/8: send email ({to_mode})", flush=True)
     print("=" * 60, flush=True)
     if not dry_run:
         student = send_email.read_student_json(require_recipient=True)

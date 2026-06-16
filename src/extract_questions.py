@@ -22,12 +22,40 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import pathlib
 import sys
 import time
 from typing import Any
 
 from llm import chat_json, LLMError
+
+
+def _write_json_atomic(path: pathlib.Path, payload: Any) -> None:
+    """Write `payload` as JSON to `path` atomically.
+
+    Writes to `<path>.tmp` first, fsyncs, then os.replace()s the
+    temp file onto the destination. The destination is either the
+    old version (if we crashed before the replace) or the new
+    version (if we got that far) -- never a half-written file.
+
+    Used for paper.json and markscheme.json so a mid-write crash
+    doesn't leave the orchestrator with a partially-populated
+    JSON that the next run would treat as "already indexed" and
+    skip. See papers_sync.py for the calling context.
+    """
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(
+        json.dumps(payload, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    # Best-effort fsync. On Windows, os.fsync on a regular file is a
+    # no-op for our purposes, but we do it for parity with Linux.
+    try:
+        os.fsync(tmp.open("rb").fileno())
+    except OSError:
+        pass
+    os.replace(tmp, path)
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parent.parent
 PAPERS_DIR = REPO_ROOT / "papers"
@@ -222,9 +250,7 @@ def main() -> int:
             paper["kind"] = "qp"
             paper["extracted_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
             paper["extractor"] = {"model": args.model, "base_url": args.base_url}
-            (slug_dir / "paper.json").write_text(
-                json.dumps(paper, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
+            _write_json_atomic(slug_dir / "paper.json", paper)
             n_q = len(paper.get("questions") or [])
             tm = paper.get("total_marks")
             print(f"  paper.json  {n_q:3} question(s)  total_marks={tm}  ({time.time()-t0:.1f}s)")
@@ -239,9 +265,7 @@ def main() -> int:
             ms["kind"] = "ms"
             ms["extracted_at_utc"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
             ms["extractor"] = {"model": args.model, "base_url": args.base_url}
-            (slug_dir / "markscheme.json").write_text(
-                json.dumps(ms, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
+            _write_json_atomic(slug_dir / "markscheme.json", ms)
             n_m = len(ms.get("marks") or [])
             print(f"  markscheme.json  {n_m:3} question(s)  ({time.time()-t0:.1f}s)")
     return 0
