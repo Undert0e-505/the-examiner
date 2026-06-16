@@ -15,7 +15,7 @@
 # eduqas, WJEC). The PDFs are kept in the local working tree and on
 # your machines (so index_papers.py and extract_questions.py can read
 # them), but they do not ship with the repo. Re-seed from the local
-# gcs-papers share on a fresh clone.
+# exam-papers share on a fresh clone.
 papers/*.pdf
 
 # Local-only paths and per-paper extracted text

@@ -3,7 +3,7 @@ src/run.py - top-level orchestrator for the the-examiner auto-pipeline.
 
 This is the script the Telegram trigger drives. It glues together:
 
-  0. Papers sync (Drive-mirrored gcs-papers/ -> papers/,
+  0. Papers sync (Drive-mirrored exam-papers/ -> papers/,
      index_papers.py, extract_questions.py for any missing slug)
   1. Photo staging (Telegram gateway cache -> intake/<slug>/)
   2. OCR pass (src/ocr_batch.py in the codex_lane sandbox)
@@ -562,7 +562,7 @@ def render_markscheme_missing_email(slug: str, expected_path: str) -> tuple[str,
         f"is not in the repo.\n\n"
         f"Expected: {expected_path}\n\n"
         f"Drop the markscheme PDF in the agreed folder "
-        f"(D:\\AIProjects\\Aaron\\Jimothy Share\\gcs-papers\\) and run "
+        f"(D:\\AIProjects\\Aaron\\Jimothy Share\\exam-papers\\) and run "
         f"`python src/extract_questions.py --slug {slug}` to produce "
         f"the markscheme.json. Then re-trigger /mark {slug}.\n"
     )
@@ -728,7 +728,7 @@ def run_pipeline(
         "stages": {},
     }
 
-    # Step 0 (always): sync PDFs from the Drive-mirrored gcs-papers
+    # Step 0 (always): sync PDFs from the Drive-mirrored exam-papers
     # folder into papers/, run the indexer, and ensure every
     # papers/<slug>/ has paper.json + markscheme.json. This is the
     # "drop PDFs in Drive and walk away" hook -- the user doesn't

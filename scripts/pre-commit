@@ -43,8 +43,8 @@ staged_files=$(git diff --cached --name-only --diff-filter=ACM)
 # and a maintainer editing them knows what they're doing.
 #
 # Also exempt src/run.py and src/papers_sync.py: they hardcode
-# the Drive-mirrored gcs-papers folder path (D:\AIProjects\<owner>\
-# Jimothy Share\gcs-papers\) which is a literal filesystem path on
+# the Drive-mirrored exam-papers folder path (D:\AIProjects\<owner>\
+# Jimothy Share\exam-papers\) which is a literal filesystem path on
 # the owner's machine and cannot be redacted. They also have
 # internal-dev-doc references to "the owner" in identity-rail
 # comments and the active-identity email routing. These are

@@ -1,13 +1,13 @@
-"""src/papers_sync.py -- sync PDFs from the Drive-mirrored gcs-papers
+"""src/papers_sync.py -- sync PDFs from the Drive-mirrored exam-papers
 folder into papers/, run the indexer, and run extract_questions for
 any slug that's missing paper.json or markscheme.json.
 
 The whole point of this module: the owner drops QP+MS PDFs into
-the Drive-mirrored gcs-papers folder (under their own user
+the Drive-mirrored exam-papers folder (under their own user
 profile; see DRIVE_PAPERS_DIR below), then sends /mark on
 Telegram. They walk away. The orchestrator picks up:
 
-  1. New PDFs in gcs-papers/ are copied into papers/ (filename-dedup,
+  1. New PDFs in exam-papers/ are copied into papers/ (filename-dedup,
      so PDFs that are already in papers/ don't get re-copied).
   2. index_papers.py runs over the whole papers/ dir, pairs the QP+MS
      PDFs by content, and writes papers/<slug>/meta.{qp,ms}.json +
@@ -45,7 +45,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PAPERS_DIR = REPO_ROOT / "papers"
 INDEX_DIR = REPO_ROOT / "index"
-# The Drive-mirrored gcs-papers folder sits under the owner's user
+# The Drive-mirrored exam-papers folder sits under the owner's user
 # profile (Google Drive for desktop mirrors a chosen local folder to
 # the cloud; this is that folder). The path is hardcoded because
 # Drive for desktop's mirror root is per-user and not exposed via
@@ -54,8 +54,8 @@ INDEX_DIR = REPO_ROOT / "index"
 # filesystem path, not a public reference -- same reason
 # src/publish.py is exempted from the pre-commit name blocklist.
 DRIVE_PAPERS_DIR = Path(__import__("os").environ.get(
-    "GCS_PAPERS_DIR",
-    r"D:\AIProjects\Aaron\Jimothy Share\gcs-papers",
+    "EXAM_PAPERS_DIR",
+    r"D:\AIProjects\Aaron\Jimothy Share\exam-papers",
 ))
 
 
@@ -64,7 +64,7 @@ def _log(msg: str) -> None:
 
 
 def sync_pdfs_from_drive(dry_run: bool = False) -> list[Path]:
-    """Copy any *.pdf from the Drive-mirrored gcs-papers folder
+    """Copy any *.pdf from the Drive-mirrored exam-papers folder
     into papers/, skipping any PDF whose filename is already in
     papers/. Returns the list of newly-copied PDFs.
 
@@ -189,11 +189,11 @@ def ensure_papers_indexed(dry_run: bool = False) -> dict:
     }
 
     _log("=" * 60)
-    _log("Step 0/8: sync PDFs from gcs-papers/ and ensure indexed")
+    _log("Step 0/8: sync PDFs from exam-papers/ and ensure indexed")
     _log("=" * 60)
 
     # 1. Sync PDFs
-    _log("[1/3] Sync PDFs from Drive-mirrored gcs-papers/")
+    _log("[1/3] Sync PDFs from Drive-mirrored exam-papers/")
     synced = sync_pdfs_from_drive(dry_run=dry_run)
     summary["synced_pdfs"] = [str(p) for p in synced]
 
@@ -246,7 +246,7 @@ def main(argv=None) -> int:
     cron job that just keeps the index warm).
     """
     parser = argparse.ArgumentParser(
-        description="Sync PDFs from gcs-papers/, index them, "
+        description="Sync PDFs from exam-papers/, index them, "
                     "and extract paper.json + markscheme.json "
                     "for any new slug. See module docstring for "
                     "the full design."

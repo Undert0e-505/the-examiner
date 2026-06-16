@@ -160,9 +160,9 @@ Windows Credential Manager, used by `git push`.
 ## 8. First-time checklist (as of 2026-06-13)
 
 - [x] Token in Credential Manager with Contents + Workflows R/W
-- [x] `papers/` populated with the first batch (Aaron's `Jimothy
-      Share/gcs-papers/` drop on 2026-06-13 — 6 PDFs across Edexcel
-      Maths, AQA Chemistry, AQA English Lit)
+- [x] `papers/` populated with the first batch — the
+      `Share/exam-papers/` drop on 2026-06-13, 6 PDFs across Edexcel
+      Maths, AQA Chemistry, AQA English Lit
 - [x] Phase 1 (indexer) written, committed (`b34230d`), verified
       idempotent. Three pairs indexed, three KVdb buckets generated.
 - [x] Phase 2 (extractor) written, committed (`97e64f1`), ran on
