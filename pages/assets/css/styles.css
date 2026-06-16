@@ -1566,9 +1566,8 @@ code,
   max-width: none;              /* override the base 320px cap */
   max-height: 96px;
   object-fit: cover;
-  border-radius: 3px;
-  border: 1px solid var(--line, #e5e5e2);  /* hairline frame around the photo only */
-  background: var(--surface-3);            /* fallback if the JPG is transparent */
+  border-radius: 0;             /* no rounding; the photo's edge is its own border */
+  background: transparent;      /* transparent; the JPG is opaque, no fallback needed */
 }
 
 .qthumbs-criterion .qthumb-label {
