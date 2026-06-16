@@ -256,3 +256,81 @@
 
   updateRailCount();
 })();
+
+
+  // ---- answer-photo lightbox (added 2026-06-16) ----
+  // Thumbs are <a class="qthumb" href="...originals/NN.jpg"
+  // data-lightbox="Q0X.Y" data-page="N" data-subq="Q0X.Y">. Clicking
+  // opens a full-size image in a centered modal. Esc or click-outside
+  // closes. The thumb blocks are emitted by publish.py's
+  // _render_qthumbs_criterion helper, fed by
+  // parse_criterion_block's "Transcript section covered" regex.
+  //
+  // Bind-once guard: the IIFE wrapper already isolates state, but if
+  // the script is ever included twice on the same page we don't want
+  // a duplicate click handler.
+  if (!window.__jimothy_qlightbox_bound) {
+    window.__jimothy_qlightbox_bound = true;
+
+    (function () {
+      var overlay = null;
+
+      function close() {
+        if (overlay) {
+          overlay.remove();
+          overlay = null;
+          document.removeEventListener('keydown', onKey);
+        }
+      }
+
+      function onKey(e) {
+        if (e.key === 'Escape') close();
+      }
+
+      function open(href, caption) {
+        close();
+        overlay = document.createElement('div');
+        overlay.className = 'qlightbox';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', 'Your answer photo, full size');
+
+        var img = document.createElement('img');
+        img.src = href;
+        img.alt = caption || 'Your answer photo';
+        overlay.appendChild(img);
+
+        if (caption) {
+          var cap = document.createElement('div');
+          cap.className = 'qlightbox-caption';
+          cap.textContent = caption;
+          overlay.appendChild(cap);
+        }
+
+        overlay.addEventListener('click', function (e) {
+          // Click anywhere in the overlay (including the image) closes.
+          // The image is inside the overlay so a click on it bubbles up.
+          close();
+        });
+
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(overlay);
+      }
+
+      document.querySelectorAll('.qthumb').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var page = a.getAttribute('data-page') || '';
+          var subq = a.getAttribute('data-subq');
+          var caption;
+          if (subq) {
+            caption = 'Full size \u2014 ' + subq + ', page ' + page;
+          } else {
+            var q = (a.closest('.qsection') || {}).id || '';
+            caption = 'Full size - ' + (q ? q.toUpperCase() + ', ' : '') + 'page ' + page;
+          }
+          open(a.getAttribute('href'), caption);
+        });
+      });
+    })();
+  }

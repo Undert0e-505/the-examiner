@@ -66,6 +66,33 @@ SRC_CSS = REPO_ROOT / "src" / "assets" / "styles.css"
 DISPLAY_NAME_OVERRIDE = "the student"   # historical: was the public-name default; no longer used in the title or meta (see comment in render_assessment_html). Kept as a marker for the intent that public-facing strings must never contain a real name.
 
 
+# Cache-buster for the published stylesheet link. The link in
+# render_per_batch_html / render_index_html gets `?v=<fingerprint>`,
+# where the fingerprint is a short stable hash of the source CSS
+# contents. A change to src/assets/styles.css (a new .qthumb rule,
+# a tweak to the .criterion card) flips the hash, which busts the
+# GitHub Pages CDN cache and forces a fresh fetch. JS gets no
+# cache-buster because we ship it under a defer attribute and the
+# CSS link is the one that bit the live page on 2026-06-16 (the
+# .qthumb rules shipped in styles.css but the live site kept the
+# old version for hours because of the cached link).
+def css_fingerprint() -> str:
+    """Return an 8-char fingerprint of the source CSS file's
+    contents. Used as a cache-buster on the published stylesheet
+    link. Falls back to the file's mtime if the file is missing
+    (shouldn't happen, but we'd rather emit a stable value than
+    crash the renderer)."""
+    if not SRC_CSS.is_file():
+        return "missing"
+    try:
+        import hashlib
+        h = hashlib.sha256(SRC_CSS.read_bytes()).hexdigest()[:8]
+        return h
+    except Exception:
+        return format(int(SRC_CSS.stat().st_mtime), "x")
+
+
+
 # ---------- Parsing ----------
 
 KVDB_BUCKET_RE = re.compile(r"https://kvdb\.io/([A-Za-z0-9-]+)")
@@ -590,6 +617,14 @@ def parse_criterion_block(block: str) -> dict | None:
     m = re.search(r"\*\*Transcript section covered:\*\*\s*([^\n]+)", block)
     if m: transcript_sec = m.group(1).strip()
 
+    # Page numbers this criterion's answer spans. Source of truth
+    # is the marking file's `Transcript section covered:` line, which
+    # Codex writes as e.g. `02.transcript.md, Q01.1` or
+    # `02.transcript.md and 03.transcript.md, Q01.1`. We extract
+    # every `NN.transcript.md` reference. The criterion can span
+    # multiple pages (multi-thumb flex row in the renderer).
+    pages = _extract_pages_from_transcript_sec(transcript_sec)
+
     # Decision
     decision = ""
     m = re.search(r"\*\*Decision:\*\*\s*([A-Z_]+)", block)
@@ -611,10 +646,51 @@ def parse_criterion_block(block: str) -> dict | None:
         "subq": subq,
         "indicative": indicative,
         "transcript_sec": transcript_sec,
+        "pages": pages,
         "decision": decision,
         "marks_awarded": marks_awarded,
         "justification": justification,
     }
+
+
+def _extract_pages_from_transcript_sec(transcript_sec: str) -> list[int]:
+    """Extract the intake page numbers from a `Transcript section
+    covered:` line.
+
+    The mark prompt asks for `<NN>.transcript.md, <Q-ref>` and Codex
+    writes either one (the usual case, when the sub-question fits
+    on a single page) or `NN.transcript.md and MM.transcript.md, Q...`
+    (when the sub-question spans two pages). We tolerate both forms
+    plus minor variations ("02.transcript.md & 03.transcript.md",
+    "02.transcript.md, 03.transcript.md", "page 2 and 3", etc.) and
+    return a sorted list of unique page ints.
+
+    Empty/invalid input returns []. The renderer falls back to a
+    no-thumb block when the list is empty.
+    """
+    if not transcript_sec:
+        return []
+    # Match every "NN.transcript.md" reference first -- the canonical
+    # form. Take the NN as int.
+    out: list[int] = []
+    for m in re.finditer(r"(\d{1,3})\.transcript\.md", transcript_sec):
+        try:
+            out.append(int(m.group(1)))
+        except ValueError:
+            pass
+    if out:
+        return sorted(set(out))
+    # Fallback: "page 2 and 3" / "pages 2, 3" without the .transcript.md
+    # suffix. Used as a safety net if Codex ever drops the suffix.
+    fallback: list[int] = []
+    for m in re.finditer(r"\b(?:page|pages)\s+(\d{1,3}(?:\s*,\s*\d{1,3})*|\d{1,3}\s+(?:and|&)\s+\d{1,3})",
+                         transcript_sec, re.IGNORECASE):
+        for n in re.findall(r"\d{1,3}", m.group(1)):
+            try:
+                fallback.append(int(n))
+            except ValueError:
+                pass
+    return sorted(set(fallback))
 
 
 # ---------- HTML rendering ----------
@@ -622,6 +698,57 @@ def parse_criterion_block(block: str) -> dict | None:
 def esc(s: str) -> str:
     return html.escape(s, quote=True)
 
+
+# Per-criterion answer-photo thumbnail block. Emits one
+# <a class="qthumb"> per page the criterion's answer spans, in
+# a side-by-side flex row. The CSS for the row lives in
+# src/assets/styles.css (the .qthumbs-criterion / .qthumb rules
+# added 2026-06-16, captured in docs/FEEDBACK-PAGE-THUMBS.md).
+# The lightbox click handler lives in src/assets/js/feedback.js
+# (the IIFE appended 2026-06-16).
+def _render_qthumbs_criterion(c: dict, qnum: str, slug: str) -> str:
+    """Return the .qthumbs-criterion block for one criterion, or
+    an empty string if the criterion has no resolvable pages.
+
+    `c["pages"]` is the list of intake page numbers (1-based)
+    the criterion's answer spans, extracted by
+    _extract_pages_from_transcript_sec. `c["subq"]` is the
+    `Q0X.Y -- description` text from the marking file; we only
+    use the leading `Q0X.Y` for the data-subq attribute and the
+    caption.
+    """
+    pages = c.get("pages") or []
+    if not pages or not slug:
+        return ""
+
+    # data-subq wants just the Q0X.Y token, not the description.
+    subq_full = c.get("subq", "") or ""
+    subq_token = subq_full.split("--", 1)[0].strip() or subq_full.strip()
+    aria_label = f"Your answer photo for {subq_token}" if subq_token else "Your answer photo"
+
+    # The href and src are relative to the per-assessment page, which
+    # lives at pages/assessments/<slug>.html, so "../assets/..." is
+    # the right prefix (matches the existing CSS/JS link in
+    # render_per_batch_html).
+    anchors = []
+    for page in pages:
+        page_str = f"{int(page):02d}"
+        href = f"../assets/photos/{slug}/originals/{page_str}.jpg"
+        src = f"../assets/photos/{slug}/thumbs/{page_str}.jpg"
+        anchors.append(
+            f'<a class="qthumb" href="{esc(href)}" '
+            f'data-lightbox="{esc(subq_token or ("qthumbs-" + page_str))}" '
+            f'data-page="{esc(str(page))}" '
+            f'data-subq="{esc(subq_token)}">'
+            f'<img src="{esc(src)}" alt="{esc("Your answer for " + subq_token + ", page " + str(page))}" loading="lazy" />'
+            f'<span class="qthumb-label">{esc(subq_token)} - p.{esc(str(page))}</span>'
+            f'</a>'
+        )
+    return (
+        f'<div class="qthumbs qthumbs-criterion" aria-label="{esc(aria_label)}">\n'
+        + "\n".join("      " + a for a in anchors)
+        + "\n    </div>"
+    )
 
 # Defensive name-rewrite. The gitignored assessment files are
 # scrubbed at the source level (see src/scrub_student_narration.py),
@@ -928,6 +1055,15 @@ def render_criterion_html(c: dict, slug: str = "", qnum: str = "", cnum: int = 0
 
     justification = esc(c.get("justification", ""))
 
+    # Per-criterion answer-photo thumbnails. One thumb per page the
+    # criterion's answer spans, laid out in a single side-by-side
+    # flex row (overflow-x: auto, no wrapping). Each anchor has
+    # data-subq + data-page so the lightbox IIFE in feedback.js can
+    # build a "Full size -- Q0X.Y, page N" caption. The thumb src
+    # is the 320px-wide JPEG under pages/assets/photos/<slug>/thumbs/;
+    # the href is the original under originals/.
+    qthumbs_html = _render_qthumbs_criterion(c, qnum, slug)
+
     return f"""
 <div class="criterion {verdict_class}" data-criterion-id="{esc(criterion_id)}" data-verdict="{verdict_class}">
   <div class="criterion-head">
@@ -940,6 +1076,7 @@ def render_criterion_html(c: dict, slug: str = "", qnum: str = "", cnum: int = 0
     {indicative_html}
     <p class="justification">{justification}</p>
   </div>
+  {qthumbs_html}
   <div class="feedback" data-mode="" data-criterion-id="{esc(criterion_id)}">
     <span class="feedback-prompt"><span class="icon">↪</span> Do you agree with this mark?</span>
     <div class="fb-actions" role="group" aria-label="Verdict">
@@ -1009,7 +1146,7 @@ def render_rail_html(meta: dict, summary: dict, questions: list[dict]) -> str:
 """
 
 
-def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], student: dict, kvdb_bucket: str, engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> str:
+def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], student: dict, kvdb_bucket: str, engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "", css_v: str = "") -> str:
     hero = render_hero_html(meta, summary, kvdb_bucket)
     q_blocks = "\n".join(render_question_html(q, meta["slug"]) for q in questions)
     rail = render_rail_html(meta, summary, questions)
@@ -1104,7 +1241,7 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/styles.css?v={css_v}">
 </head>
 <body data-kvdb-bucket="{kvdb_bucket_esc}">
   <header class="topbar">
@@ -1146,7 +1283,7 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
 """
 
 
-def render_index_html(batches: list[dict], engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> str:
+def render_index_html(batches: list[dict], engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "", css_v: str = "") -> str:
     """Dashboard listing all assessments. No student name on the
     index - that's reserved for the per-assessment page only."""
     if not batches:
@@ -1191,7 +1328,7 @@ def render_index_html(batches: list[dict], engine_label: str = "ChatGPT (Codex p
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
-  <link rel="stylesheet" href="assets/css/styles.css">
+  <link rel="stylesheet" href="assets/css/styles.css?v={css_v}">
 </head>
 <body>
   <header class="topbar">
@@ -1258,7 +1395,7 @@ def publish_one(slug: str, student: dict, dry_run: bool = False, engine_label: s
     # Sort numerically by Q number
     questions.sort(key=lambda q: int(q["qnum"]))
 
-    html_doc = narration_rewrite(render_per_batch_html(meta, summary, questions, student, kvdb_bucket, engine_label=engine_label, published_at_iso=published_at_iso))
+    html_doc = narration_rewrite(render_per_batch_html(meta, summary, questions, student, kvdb_bucket, engine_label=engine_label, published_at_iso=published_at_iso, css_v=css_fingerprint()))
 
     out = PAGES_ASSESSMENTS / f"{slug}.html"
     if not dry_run:
@@ -1276,7 +1413,7 @@ def publish_one(slug: str, student: dict, dry_run: bool = False, engine_label: s
 
 
 def publish_index(batches: list[dict], dry_run: bool = False, engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> None:
-    html_doc = narration_rewrite(render_index_html(batches, engine_label=engine_label, published_at_iso=published_at_iso))
+    html_doc = narration_rewrite(render_index_html(batches, engine_label=engine_label, published_at_iso=published_at_iso, css_v=css_fingerprint()))
     out = PAGES / "index.html"
     if not dry_run:
         PAGES.mkdir(parents=True, exist_ok=True)
@@ -1301,6 +1438,115 @@ def copy_assets(dry_run: bool = False) -> None:
         shutil.copy2(src_js, PAGES_ASSETS / "js" / "feedback.js")
     print(f"  copied {SRC_CSS} -> {PAGES_CSS}")
     print(f"  copied {src_js} -> {PAGES_ASSETS / 'js' / 'feedback.js'}")
+
+
+# Per-assessment answer-photo + thumb staging. For every page the
+# student sent, we copy the intake JPG to
+# pages/assets/photos/<slug>/originals/NN.jpg and generate a 320px-wide
+# thumbnail at thumbs/NN.jpg. The renderer in
+# _render_qthumbs_criterion() links to both. The lightbox opens
+# the original; the page itself shows the thumb.
+#
+# Idempotent: skips a thumb if it already exists with a mtime >= the
+# source mtime. Force-regenerate by deleting the thumbs/ dir.
+#
+# The originals are committed (the privacy override documented in
+# docs/PRIVACY.md and the PII-incident note in memory/2026-06-16.md
+# was about docs/, not photos), and the thumbs are generated and
+# committed alongside.
+THUMB_MAX_WIDTH = 320
+THUMB_QUALITY = 82
+PHOTOS_SRC_DIR = REPO_ROOT / "intake"
+PHOTOS_DST_DIR = PAGES / "assets" / "photos"
+
+
+def _resize_to_thumb(src: Path, dst: Path) -> None:
+    """Generate a 320px-wide JPEG thumbnail at `dst` from `src`.
+
+    Uses Pillow. Re-encodes as JPEG (some intake JPEGs are HEIC-
+    renamed-by-sender files; Pillow's decoder handles that and we
+    standardise on plain JPEG for the published site). Idempotency
+    is the caller's job; this function always overwrites `dst`.
+    """
+    from PIL import Image  # imported lazily so publish.py imports stay cheap
+    with Image.open(src) as im:
+        im = im.convert("RGB")
+        im.thumbnail((THUMB_MAX_WIDTH, 10_000), Image.LANCZOS)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        im.save(dst, format="JPEG", quality=THUMB_QUALITY, optimize=True, progressive=True)
+
+
+def copy_photos(slug: str, dry_run: bool = False) -> dict:
+    """Stage the per-assessment answer photos + thumbs.
+
+    Returns a small dict with counts {originals, thumbs, skipped,
+    missing} so the orchestrator can log a clean summary line.
+
+    Missing intake files are NOT an error -- some older assessments
+    were published before the photo pipeline existed. We just log
+    and skip; the renderer will simply not emit any thumb blocks
+    for criteria that point at a missing page.
+    """
+    src_dir = PHOTOS_SRC_DIR / slug
+    originals_dir = PHOTOS_DST_DIR / slug / "originals"
+    thumbs_dir = PHOTOS_DST_DIR / slug / "thumbs"
+    if not src_dir.is_dir():
+        return {"originals": 0, "thumbs": 0, "skipped": 0, "missing": 0,
+                "note": f"intake/{slug}/ does not exist; skipping photos"}
+
+    sources = sorted(src_dir.glob("*.jpg")) + sorted(src_dir.glob("*.jpeg"))
+    if not sources:
+        return {"originals": 0, "thumbs": 0, "skipped": 0, "missing": 0,
+                "note": f"intake/{slug}/ has no *.jpg; skipping photos"}
+
+    n_orig = n_thumb = n_skip = 0
+    for src in sources:
+        # Filenames are NN.jpg (zero-padded). Preserve the stem verbatim
+        # so the renderer's `f"{page:02d}.jpg"` lookups match.
+        dst_orig = originals_dir / src.name
+        dst_thumb = thumbs_dir / src.name
+        try:
+            if not dry_run:
+                originals_dir.mkdir(parents=True, exist_ok=True)
+                thumbs_dir.mkdir(parents=True, exist_ok=True)
+                # Copy the original if missing or stale.
+                if (not dst_orig.is_file()
+                        or dst_orig.stat().st_mtime < src.stat().st_mtime):
+                    shutil.copy2(src, dst_orig)
+                    n_orig += 1
+                # (Re)generate the thumb if missing or stale. We only
+                # skip if BOTH exist and the thumb mtime is >= the
+                # source mtime AND >= the original mtime.
+                if (not dst_thumb.is_file()
+                        or dst_thumb.stat().st_mtime < src.stat().st_mtime
+                        or (dst_orig.is_file()
+                            and dst_thumb.stat().st_mtime < dst_orig.stat().st_mtime)):
+                    _resize_to_thumb(src, dst_thumb)
+                    n_thumb += 1
+                else:
+                    n_skip += 1
+            else:
+                # Dry run: count what would happen.
+                if not dst_orig.is_file():
+                    n_orig += 1
+                if not dst_thumb.is_file():
+                    n_thumb += 1
+                else:
+                    n_skip += 1
+        except Exception as e:
+            # Don't crash the whole publish on a single bad photo.
+            # The renderer will just not emit a thumb for that page.
+            print(f"  WARN: {src.name} failed: {e}", file=sys.stderr)
+
+    print(f"  photos[{slug}]: originals={n_orig} thumbs={n_thumb} unchanged={n_skip}")
+    return {"originals": n_orig, "thumbs": n_thumb, "skipped": n_skip, "missing": 0}
+
+
+def copy_photos_for_slugs(slugs: list[str], dry_run: bool = False) -> None:
+    """Stage photos for every slug in the list. Called from main()
+    after copy_assets()."""
+    for s in slugs:
+        copy_photos(s, dry_run=dry_run)
 
 
 def discover_batches() -> list[str]:
@@ -1371,6 +1617,9 @@ def main(argv=None) -> int:
 
     print("Copying stylesheet + client JS...")
     copy_assets(dry_run=args.dry_run)
+
+    print("Copying per-assessment photos + thumbs...")
+    copy_photos_for_slugs(slugs, dry_run=args.dry_run)
 
     print()
     if args.dry_run:
