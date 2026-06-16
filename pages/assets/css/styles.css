@@ -1536,11 +1536,10 @@ code,
 
 .qthumbs-criterion {
   margin: 10px 0 12px 0;
-  padding: 6px 8px;
-  background: transparent;
-  border: 1px dashed var(--line, #e5e5e2);
-  border-radius: 4px;
-  gap: 8px;
+  padding: 0;
+  background: transparent;       /* blend into the .criterion card */
+  border: 0;                     /* no wrapper border; the row is invisible */
+  gap: 10px;
   flex-direction: row;          /* explicit: thumbs side-by-side, never stack */
   align-items: flex-start;
   flex-wrap: nowrap;            /* do not wrap to a new line; scroll if too narrow */
@@ -1550,8 +1549,8 @@ code,
 .qthumbs-criterion .qthumb {
   flex: 0 0 auto;               /* fixed-size in the row, not stretched */
   min-width: 0;
-  padding: 3px 3px 2px 3px;
-  background: #fff;
+  padding: 0;                   /* no inner padding; the photo is the visual */
+  background: transparent;      /* match the .criterion card, no white card */
   align-self: flex-start;
 }
 
@@ -1567,7 +1566,9 @@ code,
   max-width: none;              /* override the base 320px cap */
   max-height: 96px;
   object-fit: cover;
-  border-radius: 2px;
+  border-radius: 3px;
+  border: 1px solid var(--line, #e5e5e2);  /* hairline frame around the photo only */
+  background: var(--surface-3);            /* fallback if the JPG is transparent */
 }
 
 .qthumbs-criterion .qthumb-label {
@@ -1575,4 +1576,5 @@ code,
   font-size: 10px;
   line-height: 1.2;
   white-space: nowrap;
+  color: var(--muted, #6b6b66);            /* blend with the criterion text colour */
 }
