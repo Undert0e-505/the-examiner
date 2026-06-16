@@ -1535,26 +1535,44 @@ code,
  */
 
 .qthumbs-criterion {
-  margin: 12px 0 14px 0;
-  padding: 8px 10px;
+  margin: 10px 0 12px 0;
+  padding: 6px 8px;
   background: transparent;
   border: 1px dashed var(--line, #e5e5e2);
   border-radius: 4px;
   gap: 8px;
+  flex-direction: row;          /* explicit: thumbs side-by-side, never stack */
+  align-items: flex-start;
+  flex-wrap: nowrap;            /* do not wrap to a new line; scroll if too narrow */
+  overflow-x: auto;             /* graceful overflow on tiny viewports */
 }
 
 .qthumbs-criterion .qthumb {
-  min-width: 80px;
-  padding: 4px 4px 2px 4px;
+  flex: 0 0 auto;               /* fixed-size in the row, not stretched */
+  min-width: 0;
+  padding: 3px 3px 2px 3px;
   background: #fff;
+  align-self: flex-start;
 }
 
+/* Thumb image: ~2x the agree button height (48px * 2 = 96px).
+ * The phone photos are portrait (aspect ratio 0.47), so width
+ * resolves to ~45px. Multi-page sub-questions get multiple of
+ * these in a row.
+ */
 .qthumbs-criterion .qthumb img {
-  max-width: 200px;
-  max-height: 140px;
+  display: block;
+  width: auto;
+  height: 96px;
+  max-width: none;              /* override the base 320px cap */
+  max-height: 96px;
+  object-fit: cover;
+  border-radius: 2px;
 }
 
 .qthumbs-criterion .qthumb-label {
-  margin-top: 4px;
-  font-size: 11px;
+  margin-top: 3px;
+  font-size: 10px;
+  line-height: 1.2;
+  white-space: nowrap;
 }
