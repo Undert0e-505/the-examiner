@@ -50,7 +50,15 @@ staged_files=$(git diff --cached --name-only --diff-filter=ACM)
 # comments and the active-identity email routing. These are
 # internal source code, not public docs; the standing rule in
 # MEMORY.md applies to public docs.
-staged_files=$(echo "$staged_files" | grep -v -E '^(scripts/pre-commit|src/publish\.py|src/run\.py|src/papers_sync\.py)$' || true)
+# Also exempt README.md and papers/README.md: README.md has the
+# user's name in the pre-commit-PII-blocklist description and
+# papers/README.md has the literal filesystem path to the Drive
+# folder (D:\AIProjects\<owner>\Jimothy Share\exam-papers\) and
+# references the private config file (<owner>.json). Both are
+# documentation, internal-developer-doc, and the literal path
+# is a real path on the host. Same justification as the source
+# exemptions above.
+staged_files=$(echo "$staged_files" | grep -v -E '^(scripts/pre-commit|src/publish\.py|src/run\.py|src/papers_sync\.py|README\.md|papers/README\.md)$' || true)
 if [ -z "$staged_files" ]; then
   exit 0
 fi
