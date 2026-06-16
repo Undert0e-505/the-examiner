@@ -902,7 +902,14 @@ def run_pipeline(
                 skip_staging=auto_discover_mode,
             )
             if ocr["codex_returncode"] != 0:
-                summary["stages"]["ocr"] = f"codex exit {ocr['codex_returncode']}; abort"
+                err_tail = ocr.get("codex_err_tail", "").strip()
+                # Surface the actual reason in the log. If the err log
+                # is empty, fall back to the raw exit code; the operator
+                # can dig into the sandbox .codex_run/ dir for more.
+                if err_tail:
+                    summary["stages"]["ocr"] = f"codex exit {ocr['codex_returncode']}; abort. Codex stderr tail:\n{err_tail}"
+                else:
+                    summary["stages"]["ocr"] = f"codex exit {ocr['codex_returncode']}; abort"
                 summary["aborted"] = True
                 _log_step_done("3/8", "stage+ocr (failed)", t0)
                 return summary
@@ -928,8 +935,13 @@ def run_pipeline(
                 skip_copy_back=False,
             )
             if mark["codex_returncode"] != 0:
-                summary["stages"]["marking"] = f"codex exit {mark['codex_returncode']}; abort"
+                err_tail = mark.get("codex_err_tail", "").strip()
+                if err_tail:
+                    summary["stages"]["marking"] = f"codex exit {mark['codex_returncode']}; abort. Codex stderr tail:\n{err_tail}"
+                else:
+                    summary["stages"]["marking"] = f"codex exit {mark['codex_returncode']}; abort"
                 summary["aborted"] = True
+                _log_step_done("4/8", "marking (failed)", t0)
                 return summary
             summary["stages"]["marking"] = "ok"
             summary["marking_files"] = [str(p) for p in (mark["marking_files_copied_back"] or [])]

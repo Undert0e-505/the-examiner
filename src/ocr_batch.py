@@ -253,11 +253,23 @@ def run_ocr(
         progress_interval_sec=progress_interval_sec,
     )
     if codex.returncode != 0:
+        # Surface the actual reason in our result so the orchestrator's
+        # log file gets a useful abort message, not just "codex exit N".
+        # The wrapper writes 20 lines of codex.err.log into CODEX_RESULT.md
+        # but the orchestrator's abort path doesn't read that file.
+        codex_err_tail = ""
+        err_log = Path("D:/dev/codex-sandboxes") / job_name / ".codex_run" / "codex.err.log"
+        if err_log.exists():
+            err_lines = err_log.read_text(encoding="utf-8", errors="replace").splitlines()
+            codex_err_tail = "\n".join(err_lines[-30:])
+        else:
+            codex_err_tail = f"(no codex.err.log at {err_log})"
         return {
             "intake_dir": intake_dir,
             "copied_photos": copied_photos,
             "prompt_file": prompt_file,
             "codex_returncode": codex.returncode,
+            "codex_err_tail": codex_err_tail,
             "transcripts_copied_back": None,
         }
 
@@ -271,6 +283,7 @@ def run_ocr(
         "copied_photos": copied_photos,
         "prompt_file": prompt_file,
         "codex_returncode": codex.returncode,
+        "codex_err_tail": "",
         "transcripts_copied_back": transcripts_copied_back,
     }
 

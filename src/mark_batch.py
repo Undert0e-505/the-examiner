@@ -235,12 +235,28 @@ def run_marking(
         sandbox_path = Path("D:/dev/codex-sandboxes") / job_name
         marking_files_copied_back = copy_marking_back(sandbox_path, slug)
         print(f"Copied {len(marking_files_copied_back)} marking files back", flush=True)
+    # If codex failed, capture the err log tail so the orchestrator can
+    # surface the actual reason (rate-limit, auth, model not found, ...)
+    # in its own log file. The wrapper writes 20 lines into
+    # CODEX_RESULT.md, but the orchestrator's abort path doesn't read
+    # that file -- so the operator would only see "codex exit N; abort"
+    # and have to dig into the sandbox to find the real reason.
+    codex_err_tail = ""
+    if codex.returncode != 0:
+        err_log = Path("D:/dev/codex-sandboxes") / job_name / ".codex_run" / "codex.err.log"
+        if err_log.exists():
+            err_lines = err_log.read_text(encoding="utf-8", errors="replace").splitlines()
+            # Last 30 lines is the actionable error context
+            codex_err_tail = "\n".join(err_lines[-30:])
+        else:
+            codex_err_tail = f"(no codex.err.log at {err_log})"
     return {
         "intake_dir": intake_dir,
         "markscheme_path": markscheme_path,
         "transcripts": transcripts,
         "prompt_file": prompt_file,
         "codex_returncode": codex.returncode,
+        "codex_err_tail": codex_err_tail,
         "marking_files_copied_back": marking_files_copied_back,
         "tally": parse_marks_from_summary(REPO_ROOT / "assessments" / slug / "SUMMARY.md"),
     }
