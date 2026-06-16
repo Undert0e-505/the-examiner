@@ -152,7 +152,12 @@
       var uploadedIds = items.map(function (it) { return it.criterion_id; });
       fetch(url, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        // kvdb.io's PUT endpoint accepts text/plain only -- JSON
+        // bodies are rejected with 400. Send the JSON payload as a
+        // string with the text/plain content type, then the bucket
+        // stores the JSON text verbatim. The feedback-harvester
+        // reads it back and JSON.parse()s on the way in.
+        headers: { 'Content-Type': 'text/plain' },
         body: JSON.stringify({ batch: BATCH_KEY, items: items, sent_at: new Date().toISOString() })
       }).then(function (r) {
         if (r.ok) {
