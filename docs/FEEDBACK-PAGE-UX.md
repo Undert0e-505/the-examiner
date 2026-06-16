@@ -1,8 +1,11 @@
 # Feedback page — UX notes
 
-**Phase 3+ — not built yet.** This doc describes the design constraints
-on the per-assessment HTML page that the student uses to give per-mark
-feedback.
+**Status:** Built and live as of commit `54ee950` (2026-06-13) for
+the chemistry paper (`aqa-84621h-chemistry-higher-2024-05`). The
+rest of this doc captures the design constraints the page was
+built against. For the per-criterion answer-photo thumbnails
+that were added on 2026-06-16, see
+[`FEEDBACK-PAGE-THUMBS.md`](./FEEDBACK-PAGE-THUMBS.md).
 
 ## Why the page has to be clean
 
@@ -54,11 +57,19 @@ either agrees with a mark or they don't. The free-text field
 captures the nuance. Asking for a 1-5 score adds noise (the student
 will pick 3 every time) and adds clicks.
 
-## When this gets built
+## When this got built
 
-The publisher script (`src/publish.py`) is Phase 3+1. It runs
-after the assessor writes `assessor-marks.json` and writes a
-static HTML file into `pages/assessments/<batch>.html`. The
-GitHub Pages deploy workflow is already in the tree
-(`.github/workflows/static.yml`); the only thing missing is the
-human enabling Pages in the repo Settings (see `docs/SETUP.md`).
+The publisher script (`src/publish.py`) was wired up in commit
+`54ee950` (2026-06-13). It runs after the assessor writes
+`assessor-marks.json` and writes a static HTML file into
+`pages/assessments/<batch>.html`. The GitHub Pages deploy
+workflow is in the tree (`.github/workflows/static.yml`).
+
+The agree / disagree / "I read it as" controls are wired up in
+`pages/assets/js/feedback.js`. They PUT to the paper's KVdb bucket
+id stored on `<body data-kvdb-bucket="...">`. The first PUT
+success in the wild was the chemistry paper on 2026-06-16.
+
+The thumbs, the lightbox, the per-criterion placement, and the
+cache-buster pattern that came with them are documented in
+[`FEEDBACK-PAGE-THUMBS.md`](./FEEDBACK-PAGE-THUMBS.md).
