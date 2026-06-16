@@ -112,13 +112,11 @@ def run_index_papers(dry_run: bool = False) -> int:
     """
     cmd = [sys.executable, "src/index_papers.py"]
     if dry_run:
-        cmd.append("--clean")  # not really dry-run, but for the user's
-                                # purposes: re-derive everything from PDFs
-                                # (only matters if they want a refresh;
-                                # the index_papers.py default is also
-                                # idempotent overwrite, so we don't need
-                                # to add a real --dry-run for the
-                                # orchestrator's purposes).
+        # In dry-run we don't actually invoke index_papers.py -- we
+        # just describe the command. The real run uses the default
+        # (idempotent overwrite) shape; --clean would only matter if
+        # the caller wants a from-scratch re-derive, which they can
+        # pass via a future --clean flag on papers_sync itself.
         _log(f"  [dry-run] would run: {' '.join(cmd)}")
         return 0
     _log(f"  $ {' '.join(cmd)}")
@@ -203,7 +201,11 @@ def ensure_papers_indexed(dry_run: bool = False) -> dict:
     if needs_index:
         _log("[2/3] Run index_papers.py")
         rc = run_index_papers(dry_run=dry_run)
-        summary["indexed"] = (rc == 0)
+        # Only mark 'indexed' if we actually invoked the subprocess.
+        # In dry-run, run_index_papers returns 0 without doing
+        # anything; we shouldn't claim the index was rebuilt.
+        if not dry_run:
+            summary["indexed"] = (rc == 0)
         if rc != 0:
             _log(f"  index_papers.py failed (exit {rc}); aborting ensure_indexed")
             return summary
