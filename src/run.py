@@ -597,6 +597,22 @@ def auto_commit_and_push(slug: str, total_awarded: int, total_available: int) ->
     The commit message is content-derived so the git log tells you
     what was published, not just that publish.py ran. The push is
     the trigger for the Pages deploy workflow.
+
+    Push safety rail (2026-06-16): we don't assume the worktree
+    is checked out on `main`. The orchestrator has run on
+    `m3-adapter` and on feature branches in the past, and a
+    plain `git push origin main` is a silent no-op in that
+    case (local `main` ref doesn't move → "Everything up-to-
+    date" with no error). The bug bit us on 2026-06-16: a
+    fresh 69/100 publish landed on the worktree's current
+    branch but never reached origin/main, so GitHub Pages
+    kept serving the old page for ~90 minutes.
+
+    Fix: push HEAD of whatever branch we're on to the
+    `main` ref on the remote explicitly. Then verify
+    origin/main actually moved to the new HEAD. If it
+    didn't, abort loudly with a non-zero exit instead of
+    sending the email and pretending everything's fine.
     """
     # Stage the relevant paths. The orchestrator only stages
     # things the publish step touched, to avoid committing
@@ -617,9 +633,55 @@ def auto_commit_and_push(slug: str, total_awarded: int, total_available: int) ->
         f"publish: render assessment HTML for {slug} — "
         f"{total_awarded}/{total_available} ({pct}%)"
     )
+    # Capture local HEAD before commit so we can verify
+    # origin/main moved to it after the push.
+    local_head_before = git("rev-parse", "HEAD", check=False).stdout.strip()
     git("commit", "-m", msg)
-    print(f"  Pushing to origin/main (Pages deploy will follow)...", flush=True)
-    git("push", "origin", "main")
+    local_head_after = git("rev-parse", "HEAD", check=False).stdout.strip()
+    if local_head_after == local_head_before:
+        # Nothing was committed (paths_to_add had no changes).
+        # No push needed, no Pages deploy, no email. Caller
+        # already checked `git_has_changes()` so this should
+        # be rare, but be explicit anyway.
+        print(
+            f"  no new commit (HEAD unchanged at {local_head_after[:8]}); "
+            f"skipping push",
+            flush=True,
+        )
+        return
+    print(
+        f"  Pushing local HEAD {local_head_after[:8]} to origin/main "
+        f"(Pages deploy will follow)...",
+        flush=True,
+    )
+    # Push the current branch's HEAD to the remote `main` ref
+    # explicitly, regardless of what the local branch is
+    # called. This works whether we're on main, m3-adapter,
+    # or a feature branch.
+    push = git("push", "origin", f"{local_head_after}:refs/heads/main", check=False)
+    if push.returncode != 0:
+        # The push command itself failed (network, auth,
+        # non-fast-forward). Don't pretend it worked.
+        raise RuntimeError(
+            f"git push to origin/main failed (exit {push.returncode}):\n"
+            f"{push.stdout}"
+        )
+    # Post-push verification: confirm origin/main actually
+    # moved to the new HEAD. If it didn't, the push looked
+    # like it succeeded but didn't update the remote ref.
+    remote_head = git("rev-parse", "origin/main", check=False).stdout.strip()
+    if remote_head != local_head_after:
+        raise RuntimeError(
+            f"PUSH APPEARED TO SUCCEED BUT origin/main DID NOT MOVE.\n"
+            f"  local HEAD:  {local_head_after}\n"
+            f"  origin/main: {remote_head}\n"
+            f"  This is the silent-failure class from 2026-06-16. "
+            f"Manual intervention required."
+        )
+    print(
+        f"  origin/main confirmed at {remote_head[:8]}",
+        flush=True,
+    )
 
 
 # ---------- Pipeline driver ----------
@@ -823,8 +885,28 @@ def run_pipeline(
     print("=" * 60, flush=True)
     if not dry_run:
         student = publish.read_student_json(require_recipient=False)
-        meta = publish.publish_one(slug, student, dry_run=False)
-        publish.publish_index([meta], dry_run=False)
+        # Engine label: what the footer renders next to "Using X for OCR".
+        # The user sees this on the published page; pick the friendly
+        # names here so the pipeline can stay engine-agnostic
+        # internally (it just passes "codex" or "ollama-m3").
+        engine_label = "ChatGPT (Codex pass)" if engine == "codex" else "minimax-m3"
+        # First-render timestamp. Distinct from the page's
+        # "Last updated" line (which refreshes on every feedback
+        # PUT). This is the moment the assessment went live.
+        import datetime as _dt
+        published_at_iso = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+        meta = publish.publish_one(
+            slug, student,
+            dry_run=False,
+            engine_label=engine_label,
+            published_at_iso=published_at_iso,
+        )
+        publish.publish_index(
+            [meta],
+            dry_run=False,
+            engine_label=engine_label,
+            published_at_iso=published_at_iso,
+        )
         publish.copy_assets(dry_run=False)
         summary["stages"]["publish"] = "ok"
         summary["meta"] = {

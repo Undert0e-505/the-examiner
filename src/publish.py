@@ -1007,7 +1007,7 @@ def render_rail_html(meta: dict, summary: dict, questions: list[dict]) -> str:
 """
 
 
-def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], student: dict, kvdb_bucket: str) -> str:
+def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], student: dict, kvdb_bucket: str, engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> str:
     hero = render_hero_html(meta, summary, kvdb_bucket)
     q_blocks = "\n".join(render_question_html(q, meta["slug"]) for q in questions)
     rail = render_rail_html(meta, summary, questions)
@@ -1071,6 +1071,15 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
     updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     display_name = student.get("display_name", DISPLAY_NAME_OVERRIDE)
     kvdb_bucket_esc = esc(kvdb_bucket or "")
+    engine_label_esc = esc(engine_label or "ChatGPT (Codex pass)")
+    # `published_at_iso` is the first-render timestamp. `updated` is
+    # the last-edit timestamp (refreshed when a feedback PUT lands).
+    # The footer shows both so the reader can tell when the page
+    # went live vs. when the most recent feedback was received.
+    if published_at_iso:
+        published_line = f'Published at {esc(published_at_iso)} · '
+    else:
+        published_line = f'Published at {updated} · '
 
     # The JS below uses double-brace escaping ({{...}}) for the
     # f-string literal braces; the single-brace {display_name}
@@ -1120,7 +1129,7 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
   </div>
 
   <footer class="footer">
-    <div class="row">Marked by Jimothy's second-pair-of-eyes pipeline · Errors flagged for human review · Last updated {updated}</div>
+    <div class="row">{published_line}Using {engine_label_esc} for OCR · Marked by Jimothy's second-pair-of-eyes pipeline · Errors flagged for human review · Last updated {updated}</div>
   </footer>
 
   <script src="../assets/js/feedback.js" defer></script>
@@ -1129,7 +1138,7 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
 """
 
 
-def render_index_html(batches: list[dict]) -> str:
+def render_index_html(batches: list[dict], engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> str:
     """Dashboard listing all assessments. No student name on the
     index — that's reserved for the per-assessment page only."""
     if not batches:
@@ -1157,6 +1166,11 @@ def render_index_html(batches: list[dict]) -> str:
         cards = f'<ul class="batch-list">{"".join(items)}</ul>'
 
     updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    engine_label_esc = esc(engine_label or "ChatGPT (Codex pass)")
+    if published_at_iso:
+        published_line = f'Published at {esc(published_at_iso)} · '
+    else:
+        published_line = f'Published at {updated} · '
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -1192,7 +1206,7 @@ def render_index_html(batches: list[dict]) -> str:
     {cards}
   </div>
   <footer class="footer">
-    <div class="row">Marked by Jimothy's second-pair-of-eyes pipeline · Last updated {updated}</div>
+    <div class="row">{published_line}Using {engine_label_esc} for OCR · Marked by Jimothy's second-pair-of-eyes pipeline · Last updated {updated}</div>
   </footer>
 </body>
 </html>
@@ -1201,7 +1215,7 @@ def render_index_html(batches: list[dict]) -> str:
 
 # ---------- Orchestration ----------
 
-def publish_one(slug: str, student: dict, dry_run: bool = False) -> dict:
+def publish_one(slug: str, student: dict, dry_run: bool = False, engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> dict:
     """Render one batch to pages/assessments/<slug>.html. Returns
     a metadata dict for the index."""
     meta = read_paper_metadata(slug)
@@ -1236,7 +1250,7 @@ def publish_one(slug: str, student: dict, dry_run: bool = False) -> dict:
     # Sort numerically by Q number
     questions.sort(key=lambda q: int(q["qnum"]))
 
-    html_doc = narration_rewrite(render_per_batch_html(meta, summary, questions, student, kvdb_bucket))
+    html_doc = narration_rewrite(render_per_batch_html(meta, summary, questions, student, kvdb_bucket, engine_label=engine_label, published_at_iso=published_at_iso))
 
     out = PAGES_ASSESSMENTS / f"{slug}.html"
     if not dry_run:
@@ -1253,8 +1267,8 @@ def publish_one(slug: str, student: dict, dry_run: bool = False) -> dict:
     }
 
 
-def publish_index(batches: list[dict], dry_run: bool = False) -> None:
-    html_doc = narration_rewrite(render_index_html(batches))
+def publish_index(batches: list[dict], dry_run: bool = False, engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> None:
+    html_doc = narration_rewrite(render_index_html(batches, engine_label=engine_label, published_at_iso=published_at_iso))
     out = PAGES / "index.html"
     if not dry_run:
         PAGES.mkdir(parents=True, exist_ok=True)
