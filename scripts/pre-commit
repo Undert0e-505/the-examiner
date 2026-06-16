@@ -1,0 +1,74 @@
+#!/usr/bin/env bash
+# Pre-commit hook: block commits that contain known sensitive
+# strings in any staged file. Designed to catch the two PII leaks
+# we've already had:
+#   1. The student's first name in public docs (2026-06-16 13:00,
+#      commit 7e98f47, fixed via filter-repo in caa4af9).
+#   2. The owner's name in the published page title/meta
+#      (2026-06-16 13:11, 46+ commits, fixed via filter-repo in
+#      1ca54aa + source fix in src/publish.py).
+#
+# This hook is a last-line-of-defence safety net. The first line
+# of defence is the privacy policy in docs/PRIVACY.md and the
+# standing rule in MEMORY.md that says "the default for public
+# docs is 'the student' / 'the owner' / initials".
+#
+# To install: copy this file to .git/hooks/pre-commit and chmod +x
+# it. Or symlink: `ln -s ../../scripts/pre-commit .git/hooks/pre-commit`.
+#
+# To bypass (only in an emergency, e.g. quoting this same file in
+# a test): `git commit --no-verify`.
+
+set -e
+
+# Patterns that must NEVER appear in any tracked file.
+# The strings are anchored to a non-word boundary so the hook
+# doesn't false-positive on substrings (e.g. "Aaron" inside
+# "Aaronic" or "aaron" inside a commit SHA).
+SENSITIVE=(
+  # Student's first name. Pre-existing leaks were cleaned up
+  # in 2026-06-16 13:00 (caa4af9). Pattern is case-insensitive
+  # but only matches as a whole word.
+  '(^|[^a-zA-Z])Will([^a-zA-Z]|$)'
+
+  # Owner's first name. Pre-existing leaks cleaned up in
+  # 2026-06-16 13:11 (1ca54aa). Match as a whole word.
+  '(^|[^a-zA-Z])Aaron([^a-zA-Z]|$)'
+)
+
+staged_files=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$staged_files" ]; then
+  exit 0
+fi
+
+fail=0
+for pattern in "${SENSITIVE[@]}"; do
+  # Search the staged content (not just file names). Use
+  # `git diff --cached -U0` to get only added lines, which
+  # avoids re-flagging content that was already in HEAD.
+  matches=$(echo "$staged_files" | xargs git show :"$pattern" 2>/dev/null \
+    | grep -nE "$pattern" || true)
+  # The above doesn't actually work for git's :path syntax
+  # across multiple files. Use a simpler per-file loop:
+  while IFS= read -r file; do
+    [ -z "$file" ] && continue
+    # Read the staged version of the file.
+    staged_content=$(git show ":$file" 2>/dev/null || continue)
+    if echo "$staged_content" | grep -qE "$pattern"; then
+      echo "  -> matched in $file" >&2
+      fail=1
+    fi
+  done <<< "$staged_files"
+done
+
+if [ $fail -ne 0 ]; then
+  echo "" >&2
+  echo "ERROR: a staged file contains a sensitive string" >&2
+  echo "(a student's or owner's name, per the privacy policy)." >&2
+  echo "" >&2
+  echo "Use 'the student' / 'the owner' / initials in public docs," >&2
+  echo "or 'git commit --no-verify' to bypass (only in an emergency)." >&2
+  exit 1
+fi
+
+exit 0

@@ -16,8 +16,10 @@ Design goals (per the Phase 3 design in docs/FEEDBACK-PAGE-UX.md):
   - Per-question accordion; AWARD/NOT_AWARD/NOT_APPLICABLE
     verdicts with one-line justification.
   - No photos, no raw OCR transcripts, no personal data on the
-    public site. The student name shown is the display_name from
-    private/student.json (which is "the student" by default).
+    public site. The page title and meta description do NOT
+    include any name (not the active identity, not the student);
+    the salutation that uses the name lives in the private email
+    path only.
   - Per-criterion markscheme content is summarised, not
     copy-pasted. (The full markscheme stays in
     papers/<slug>/markscheme.json, which is not uploaded.)
@@ -61,7 +63,7 @@ PAGES_ASSETS = PAGES / "assets"
 PAGES_CSS = PAGES_ASSETS / "css" / "styles.css"
 SRC_CSS = REPO_ROOT / "src" / "assets" / "styles.css"
 
-DISPLAY_NAME_OVERRIDE = "the student"   # the public name; never a real name
+DISPLAY_NAME_OVERRIDE = "the student"   # historical: was the public-name default; no longer used in the title or meta (see comment in render_assessment_html). Kept as a marker for the intent that public-facing strings must never contain a real name.
 
 
 # ---------- Parsing ----------
@@ -143,7 +145,7 @@ def read_paper_metadata(slug: str) -> dict:
         "board": pair.get("board", ""),
         "spec": pair.get("spec", ""),
         "paper": pair.get("paper", ""),
-        "tier": pair.get("tier", "") or "—",
+        "tier": pair.get("tier", "") or "-",
         "exam_ym": pair.get("exam_ym", ""),
         "sitting_date": pair.get("sitting_date") or pair.get("exam_ym", ""),
         "title": f"{pair.get('board', '')} {pair.get('spec', '')} {pair.get('tier') or ''}".replace("  ", " ").strip(),
@@ -201,7 +203,7 @@ def smoke_test_bucket(bucket_id: str) -> bool:
     other status raises so the orchestrator can decide.
 
     We use PUT, not GET, because kvdb.io returns 404 for GET on a
-    key that's never been written — even in a perfectly alive
+    key that's never been written - even in a perfectly alive
     bucket. PUT to a never-written key returns 201 Created, which
     is what we want here.
     """
@@ -269,7 +271,7 @@ def ensure_kvdb_bucket(slug: str, recovery_email: str) -> tuple[str, bool]:
       2. If absent or empty: create new bucket, write to file, return (id, True)
       3. If present: smoke-test the id (GET a key)
       4. If smoke-test returns 404: create new bucket, write to file, return (id, True)
-      5. If smoke-test returns 200: return (id, False) — bucket is healthy
+      5. If smoke-test returns 200: return (id, False) - bucket is healthy
     """
     existing = read_kvdb_bucket_from_paper(slug)
     if existing:
@@ -302,7 +304,7 @@ def parse_summary(slug: str) -> dict:
         raise FileNotFoundError(f"{path} does not exist. Run mark_batch.py first.")
     content = path.read_text(encoding="utf-8")
 
-    # Header — look for "Total marks available: N" and "Total marks awarded: N"
+    # Header - look for "Total marks available: N" and "Total marks awarded: N"
     total_available = None
     total_awarded = None
     paper_code = ""
@@ -316,7 +318,7 @@ def parse_summary(slug: str) -> dict:
     m = re.search(r"Total marks awarded:\s*(\d+)", content)
     if m: total_awarded = int(m.group(1))
 
-    # Per-question tally table — match "| Q1 | 10 | 8 | <notes> |"
+    # Per-question tally table - match "| Q1 | 10 | 8 | <notes> |"
     q_rows = []
     for m in re.finditer(
         r"\|\s*(Q\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|",
@@ -329,7 +331,7 @@ def parse_summary(slug: str) -> dict:
             "notes": m.group(4).strip(),
         })
 
-    # Observations — pull the paragraphs from "## Cross-paper observations"
+    # Observations - pull the paragraphs from "## Cross-paper observations"
     # (student-facing: strengths, IDK pattern, prose-vs-calculation).
     # The current Codex output writes the H2 header in a few shapes
     # depending on prompt version:
@@ -563,7 +565,7 @@ def parse_criterion_block(block: str) -> dict | None:
     # between the two and the previous regex silently dropped
     # every criterion when the format changed, which rendered as
     # a generic "No per-criterion details available." on the page.
-    ao_m = re.match(r"^(AO\d+|—|-|null|-)\s*(?:-|—)+\s*(\d+)\s*marks?(?:\(s\))?", header)
+    ao_m = re.match(r"^(AO\d+|-|-|null|-)\s*(?:-|-)+\s*(\d+)\s*marks?(?:\(s\))?", header)
     if not ao_m:
         return None
     ao = ao_m.group(1)
@@ -662,12 +664,12 @@ def narration_rewrite(text: str) -> str:
         # (case-sensitive: only the proper noun, not modal verb)
         seg = re.sub(r"\bWill's\b", "the student's", seg)
         seg = re.sub(r"\bWill\b", "You", seg)
-        # Pronouns referring to the student in narrator voice —
+        # Pronouns referring to the student in narrator voice -
         # rewrite to second-person for the feedback tone, and to
         # avoid leaking the (now anonymised) identity via gender.
         # The pattern matches " He ", "He ", " He.", etc.
         # We do NOT touch "He " in chemical text (e.g. "He" in
-        # "Helium" — that gets past, since the markscheme will
+        # "Helium" - that gets past, since the markscheme will
         # only say "Helium" in full, and the OCR transcripts are
         # not rendered to the public page).
         seg = re.sub(r"\bhe scored\b", "you scored", seg)
@@ -708,7 +710,7 @@ def narration_rewrite(text: str) -> str:
 def md_to_html_simple(s: str) -> str:
     """Lightweight markdown -> HTML for short strings (observations,
     verdicts). Handles: **bold**, *italic*, `code`, paragraphs,
-    bullet lists. Deliberately not a full markdown parser — we
+    bullet lists. Deliberately not a full markdown parser - we
     control the input and want predictable output."""
     if not s: return ""
     s = esc(s)
@@ -930,7 +932,7 @@ def render_criterion_html(c: dict, slug: str = "", qnum: str = "", cnum: int = 0
 <div class="criterion {verdict_class}" data-criterion-id="{esc(criterion_id)}" data-verdict="{verdict_class}">
   <div class="criterion-head">
     <span class="marks">{marks_a}/{marks_p}</span>
-    {f'<span class="ao">{ao}</span>' if ao and ao != '—' else ''}
+    {f'<span class="ao">{ao}</span>' if ao and ao != '-' else ''}
     <span class="subq">{subq}</span>
     <span class="verdict-pill {verdict_class}">{esc(decision_label)}</span>
   </div>
@@ -943,7 +945,7 @@ def render_criterion_html(c: dict, slug: str = "", qnum: str = "", cnum: int = 0
     <div class="fb-actions" role="group" aria-label="Verdict">
       <button type="button" class="fb-btn AWARD" data-mode="AWARD"><span class="icon">✓</span> Agree</button>
       <button type="button" class="fb-btn DISAGREE" data-mode="DISAGREE"><span class="icon">↺</span> Disagree</button>
-      <button type="button" class="fb-btn NOTE" data-mode="NOTE"><span class="icon">✎</span> I read it as…</button>
+      <button type="button" class="fb-btn NOTE" data-mode="NOTE"><span class="icon">✎</span> I read it as...</button>
     </div>
     <textarea class="fb-note" data-mode="disagree" placeholder="What did you write, and why does the mark seem wrong?" rows="2"></textarea>
     <textarea class="fb-note" data-mode="note" placeholder="Tell us what you read on the page (e.g. 'I wrote 0.5 mol, not 0.05')." rows="2"></textarea>
@@ -1069,7 +1071,6 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
         )
 
     updated = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    display_name = student.get("display_name", DISPLAY_NAME_OVERRIDE)
     kvdb_bucket_esc = esc(kvdb_bucket or "")
     engine_label_esc = esc(engine_label or "ChatGPT (Codex pass)")
     # `published_at_iso` is the first-render timestamp. `updated` is
@@ -1082,17 +1083,24 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
         published_line = f'Published at {updated} · '
 
     # The JS below uses double-brace escaping ({{...}}) for the
-    # f-string literal braces; the single-brace {display_name}
-    # etc. are the f-string substitutions.
+    # f-string literal braces; the single-brace {esc(...)}
+    # calls are the f-string substitutions.
+    # NOTE: the page title and meta description intentionally do
+    # NOT include the active identity's display_name. The name
+    # belongs in the email salutation (where it is private) and
+    # not on the public site (where it would leak the active
+    # identity or the student name into browser tabs and social
+    # previews). See docs/PRIVACY.md and the 2026-06-16
+    # PII-in-title incident for the rationale.
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
-  <meta name="description" content="Per-assessment result for {esc(display_name)} — {esc(meta.get('title', ''))}">
+  <meta name="description" content="Per-assessment result - {esc(meta.get('title', ''))}">
   <meta name="robots" content="noindex">
-  <title>{esc(display_name)} — {esc(meta.get('title', ''))}</title>
+  <title>{esc(meta.get('title', ''))}</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
@@ -1140,7 +1148,7 @@ def render_per_batch_html(meta: dict, summary: dict, questions: list[dict], stud
 
 def render_index_html(batches: list[dict], engine_label: str = "ChatGPT (Codex pass)", published_at_iso: str = "") -> str:
     """Dashboard listing all assessments. No student name on the
-    index — that's reserved for the per-assessment page only."""
+    index - that's reserved for the per-assessment page only."""
     if not batches:
         cards = '<div class="empty-state"><h2>No assessments yet</h2><p>Run <code>src/mark_batch.py</code> on a paper, then re-run publish.</p></div>'
     else:
@@ -1179,7 +1187,7 @@ def render_index_html(batches: list[dict], engine_label: str = "ChatGPT (Codex p
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="color-scheme" content="light dark">
   <meta name="description" content="GCSE self-mark dashboard. Per-assessment results, feedback, and per-criterion markscheme detail.">
-  <title>examiner — all assessments</title>
+  <title>examiner - all assessments</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
