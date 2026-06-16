@@ -68,6 +68,24 @@ import sys
 import time
 from pathlib import Path
 
+# Pipeline instrumentation: every step in run_pipeline() calls
+# _log_step_start("N/total", "name") at the top and
+# _log_step_done("N/total", "name", t0) at the bottom. The
+# _PIPELINE_T0 is the run-wide start time, also printed on entry.
+# This makes the log file self-describing: if a run stalls, the
+# last "step_start" with no matching "step_done" is the one
+# that's stuck, and the time since tells you how long.
+_PIPELINE_T0: float | None = None
+
+def _now_iso() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%S", time.localtime())
+
+def _log_step_start(step: str, name: str) -> None:
+    print(f"[{_now_iso()}] step_start  {step}  {name}", flush=True)
+
+def _log_step_done(step: str, name: str, t0: float) -> None:
+    print(f"[{_now_iso()}] step_done   {step}  {name}  ({time.time()-t0:.1f}s)", flush=True)
+
 # Import the lower-level pieces. These are all refactored to be
 # importable as modules (run_ocr, run_marking, ensure_kvdb_bucket,
 # send_via_gmail, etc.).
@@ -738,6 +756,8 @@ def run_pipeline(
     # skip -- the user is re-running publish/email only and doesn't
     # want a multi-minute extract in the way.
     if not skip_codex and not dry_run:
+        _log_step_start("0/8", "papers_sync")
+        t0 = time.time()
         sync_summary = papers_sync.ensure_papers_indexed(dry_run=False)
         summary["stages"]["papers_sync"] = "ok" if sync_summary else "failed"
         summary["papers_sync"] = sync_summary
@@ -745,6 +765,7 @@ def run_pipeline(
             # Only abort if we tried to index and it failed. A
             # successful sync with no new PDFs is fine.
             pass
+        _log_step_done("0/8", "papers_sync", t0)
     else:
         if skip_codex:
             print("Step 0/8: papers_sync skipped (--skip-codex)", flush=True)
@@ -760,6 +781,8 @@ def run_pipeline(
         print("=" * 60, flush=True)
         print("Step 1/8: auto-discover (paper + page order)", flush=True)
         print("=" * 60, flush=True)
+        _log_step_start("1/8", "auto-discover")
+        t0 = time.time()
         if dry_run:
             print("  [dry-run] Would run discovery pass; skipping.", flush=True)
             summary["stages"]["auto_discover"] = "dry-run"
@@ -816,6 +839,7 @@ def run_pipeline(
                 "cover_text": discovery["cover_text"],
                 "confidence": discovery["confidence"],
             }
+            _log_step_done("1/8", "auto-discover", t0)
 
     if not skip_codex:
         if not photo_paths:
@@ -830,6 +854,8 @@ def run_pipeline(
     print("=" * 60, flush=True)
     print(f"Step 2/8: markscheme check for {slug}", flush=True)
     print("=" * 60, flush=True)
+    _log_step_start("2/8", "markscheme_check")
+    t0 = time.time()
     exists, expected_path = check_markscheme_exists(slug)
     if not exists:
         print(f"  markscheme.json not found at {expected_path}", flush=True)
@@ -850,15 +876,19 @@ def run_pipeline(
             print(f"  emailed Aaron: {subject}", flush=True)
         summary["stages"]["markscheme_check"] = "missing; abort email sent"
         summary["aborted"] = True
+        _log_step_done("2/8", "markscheme_check (missing; abort)", t0)
         return summary
     print(f"  markscheme.json present at {expected_path}", flush=True)
     summary["stages"]["markscheme_check"] = "ok"
+    _log_step_done("2/8", "markscheme_check", t0)
 
     if not skip_codex:
         # Step 2: stage photos
         print("=" * 60, flush=True)
         print(f"Step 3/8: stage {len(photo_paths)} photos to intake/{slug}/", flush=True)
         print("=" * 60, flush=True)
+        _log_step_start("3/8", "stage+ocr")
+        t0 = time.time()
         if not dry_run:
             ocr = ocr_batch.run_ocr(
                 slug=slug,
@@ -874,17 +904,22 @@ def run_pipeline(
             if ocr["codex_returncode"] != 0:
                 summary["stages"]["ocr"] = f"codex exit {ocr['codex_returncode']}; abort"
                 summary["aborted"] = True
+                _log_step_done("3/8", "stage+ocr (failed)", t0)
                 return summary
             summary["stages"]["ocr"] = "ok"
             summary["transcripts"] = [str(p) for p in (ocr["transcripts_copied_back"] or [])]
+            _log_step_done("3/8", "stage+ocr", t0)
         else:
             print(f"  [dry-run] Would stage {len(photo_paths)} photos and call codex_lane", flush=True)
             summary["stages"]["ocr"] = "dry-run"
+            _log_step_done("3/8", "stage+ocr (dry-run)", t0)
 
         # Step 3: marking pass
         print("=" * 60, flush=True)
         print(f"Step 4/8: marking pass for {slug}", flush=True)
         print("=" * 60, flush=True)
+        _log_step_start("4/8", "marking")
+        t0 = time.time()
         if not dry_run:
             mark = mark_batch.run_marking(
                 slug=slug,
@@ -899,9 +934,11 @@ def run_pipeline(
             summary["stages"]["marking"] = "ok"
             summary["marking_files"] = [str(p) for p in (mark["marking_files_copied_back"] or [])]
             summary["tally"] = mark.get("tally")
+            _log_step_done("4/8", "marking", t0)
         else:
             print(f"  [dry-run] Would call codex_lane for marking", flush=True)
             summary["stages"]["marking"] = "dry-run"
+            _log_step_done("4/8", "marking (dry-run)", t0)
     else:
         summary["stages"]["ocr"] = "skipped"
         summary["stages"]["marking"] = "skipped"
@@ -910,6 +947,8 @@ def run_pipeline(
     print("=" * 60, flush=True)
     print(f"Step 5/8: publish (render pages/assessments/{slug}.html)", flush=True)
     print("=" * 60, flush=True)
+    _log_step_start("5/8", "publish")
+    t0 = time.time()
     if not dry_run:
         student = publish.read_student_json(require_recipient=False)
         # Engine label: what the footer renders next to "Using X for OCR".
@@ -960,6 +999,9 @@ def run_pipeline(
     print("=" * 60, flush=True)
     print("Step 6/8: git auto-commit + push to origin/main", flush=True)
     print("=" * 60, flush=True)
+    _log_step_done("5/8", "publish", t0)
+    _log_step_start("6/8", "git_push")
+    t0 = time.time()
     if not dry_run:
         if not git_has_changes():
             print("  no changes to commit; skipping push", flush=True)
@@ -970,34 +1012,44 @@ def run_pipeline(
             try:
                 auto_commit_and_push(slug, ta, tp)
                 summary["stages"]["git"] = "ok"
+                _log_step_done("6/8", "git_push", t0)
             except subprocess.CalledProcessError as e:
                 print(f"  git push failed: {e}", flush=True)
                 summary["stages"]["git"] = f"failed: {e}"
                 summary["aborted"] = True
+                _log_step_done("6/8", "git_push (failed)", t0)
                 return summary
     else:
         print("  [dry-run] Would git add + commit + push to origin/main", flush=True)
         summary["stages"]["git"] = "dry-run"
+        _log_step_done("6/8", "git_push (dry-run)", t0)
 
     # Step 6: wait for the Pages workflow to deploy (so the public
     # URL is live when the email lands).
     print("=" * 60, flush=True)
     print("Step 7/8: wait for Pages deploy", flush=True)
     print("=" * 60, flush=True)
+    _log_step_start("7/8", "pages_deploy")
+    t0 = time.time()
     if not dry_run:
         if wait_for_pages_deploy(slug, timeout_sec=120):
             summary["stages"]["pages_deploy"] = "ok"
+            _log_step_done("7/8", "pages_deploy", t0)
         else:
             print("  Pages deploy not seen within 120s; sending email anyway", flush=True)
             summary["stages"]["pages_deploy"] = "timeout"
+            _log_step_done("7/8", "pages_deploy (timeout)", t0)
     else:
         print("  [dry-run] Would poll the latest workflow run for completion", flush=True)
         summary["stages"]["pages_deploy"] = "dry-run"
+        _log_step_done("7/8", "pages_deploy (dry-run)", t0)
 
     # Step 7: send the email
     print("=" * 60, flush=True)
     print(f"Step 8/8: send email ({to_mode})", flush=True)
     print("=" * 60, flush=True)
+    _log_step_start("8/8", "email")
+    t0 = time.time()
     if not dry_run:
         student = send_email.read_student_json(require_recipient=True)
         summary_parse = publish.parse_summary(slug)
@@ -1023,14 +1075,17 @@ def run_pipeline(
                 app_password=send_email.get_gmail_app_password(),
             )
             summary["stages"]["email"] = f"sent to {', '.join(to_list)}" + (f" (cc: {', '.join(cc_list)})" if cc_list else "")
+            _log_step_done("8/8", "email", t0)
         except Exception as e:
             print(f"  email send failed: {e}", flush=True)
             summary["stages"]["email"] = f"failed: {e}"
             summary["aborted"] = True
+            _log_step_done("8/8", "email (failed)", t0)
             return summary
     else:
         print(f"  [dry-run] Would send email to {to_mode} recipient via Gmail SMTP", flush=True)
         summary["stages"]["email"] = "dry-run"
+        _log_step_done("8/8", "email (dry-run)", t0)
 
     return summary
 

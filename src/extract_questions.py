@@ -169,7 +169,9 @@ def extract_paper(slug_dir: pathlib.Path, model: str, base_url: str, *, timeout:
     template = load_prompt("extract_qp.txt")
     prelude, _, tail = template.partition("PAPER TEXT:")
     user_payload = tail.replace("{body}", body)
-    return chat_json(
+    print(f"[extract_paper] sending LLM call: model={model}, body={len(body)} chars, schema=PAPER_SCHEMA, timeout={timeout}s", flush=True)
+    t0 = time.time()
+    result = chat_json(
         user_payload,
         system=prelude.rstrip(),
         schema=PAPER_SCHEMA,
@@ -178,6 +180,8 @@ def extract_paper(slug_dir: pathlib.Path, model: str, base_url: str, *, timeout:
         timeout=timeout,
         max_retries=max_retries,
     )
+    print(f"[extract_paper] LLM call returned in {time.time()-t0:.1f}s, {len(json.dumps(result))} bytes", flush=True)
+    return result
 
 
 def extract_markscheme(slug_dir: pathlib.Path, model: str, base_url: str, *, timeout: float = 600.0, max_retries: int = 2) -> dict[str, Any]:
@@ -187,7 +191,9 @@ def extract_markscheme(slug_dir: pathlib.Path, model: str, base_url: str, *, tim
     template = load_prompt("extract_ms.txt")
     prelude, _, tail = template.partition("MARK SCHEME TEXT:")
     user_payload = tail.replace("{body}", body)
-    return chat_json(
+    print(f"[extract_markscheme] sending LLM call: model={model}, body={len(body)} chars, schema=MARKSCHEME_SCHEMA, timeout={timeout}s", flush=True)
+    t0 = time.time()
+    result = chat_json(
         user_payload,
         system=prelude.rstrip(),
         schema=MARKSCHEME_SCHEMA,
@@ -196,6 +202,8 @@ def extract_markscheme(slug_dir: pathlib.Path, model: str, base_url: str, *, tim
         timeout=timeout,
         max_retries=max_retries,
     )
+    print(f"[extract_markscheme] LLM call returned in {time.time()-t0:.1f}s, {len(json.dumps(result))} bytes", flush=True)
+    return result
 
 
 def main() -> int:

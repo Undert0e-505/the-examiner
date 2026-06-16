@@ -70,13 +70,18 @@ def chat(
     }
     last_err: Exception | None = None
     for attempt in range(max_retries):
+        t0 = time.time()
         try:
+            print(f"[llm.chat] POST {url} (model={model}, attempt={attempt+1}/{max_retries}, timeout={timeout}s)", flush=True)
             r = requests.post(url, json=payload, timeout=timeout)
+            print(f"[llm.chat] response {r.status_code} in {time.time()-t0:.2f}s, {len(r.text)} bytes", flush=True)
         except (requests.ConnectionError, requests.Timeout) as exc:
+            print(f"[llm.chat] TIMEOUT/CONN_ERROR after {time.time()-t0:.2f}s: {exc}", flush=True)
             last_err = exc
             time.sleep(0.5 * (2 ** attempt) + random.random() * 0.2)
             continue
         if r.status_code >= 500 or r.status_code == 429:
+            print(f"[llm.chat] transient {r.status_code}, retrying", flush=True)
             last_err = LLMError(f"{r.status_code}: {r.text[:500]}")
             time.sleep(0.5 * (2 ** attempt) + random.random() * 0.2)
             continue
@@ -131,13 +136,18 @@ def chat_json(
         payload = dict(base_payload)
         payload["messages"] = messages
         payload["format"] = "json"
+        t0 = time.time()
         try:
+            print(f"[llm.chat_json] POST {url} (model={model}, attempt={attempt+1}/{max_retries}, timeout={timeout}s, schema={'yes' if schema else 'no'})", flush=True)
             r = requests.post(url, json=payload, timeout=timeout)
+            print(f"[llm.chat_json] response {r.status_code} in {time.time()-t0:.2f}s, {len(r.text)} bytes", flush=True)
         except (requests.ConnectionError, requests.Timeout) as exc:
+            print(f"[llm.chat_json] TIMEOUT/CONN_ERROR after {time.time()-t0:.2f}s: {exc}", flush=True)
             last_err = exc
             time.sleep(0.5 * (2 ** attempt) + random.random() * 0.2)
             continue
         if r.status_code >= 500 or r.status_code == 429:
+            print(f"[llm.chat_json] transient {r.status_code}, retrying", flush=True)
             last_err = LLMError(f"{r.status_code}: {r.text[:500]}")
             time.sleep(0.5 * (2 ** attempt) + random.random() * 0.2)
             continue
