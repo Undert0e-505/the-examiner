@@ -176,48 +176,66 @@ def run_ocr(
     print(f"[ollama-vision] OCR: {len(photos)} photos in {intake_dir}", flush=True)
     print(f"[ollama-vision] OCR: model={model}, timeout={timeout:.0f}s", flush=True)
 
-    # Build the prompt Ã¢â‚¬â€ one call with all photos
-    user_text = OCR_USER_PREAMBLE.format(n=len(photos), page_num=page_numbers)
-
+    # Batch the OCR calls — 5 photos at a time
+    BATCH_SIZE = 5
+    all_written = []
     t0 = time.time()
-    try:
-        response = chat_with_images(
-            user_text,
-            photos,
-            system=OCR_SYSTEM,
-            model=model,
-            base_url=base_url,
-            timeout=timeout,
-        )
-    except Exception as e:
-        elapsed = time.time() - t0
-        return {
-            "intake_dir": intake_dir,
-            "copied_photos": photos,
-            "prompt_file": None,
-            "codex_returncode": 1,
-            "codex_err_tail": f"Ollama OCR failed after {elapsed:.1f}s: {e}",
-            "transcripts_copied_back": None,
-        }
+
+    for batch_start in range(0, len(photos), BATCH_SIZE):
+        batch_end = min(batch_start + BATCH_SIZE, len(photos))
+        batch_photos = photos[batch_start:batch_end]
+        batch_page_numbers = page_numbers[batch_start:batch_end]
+
+        user_text = OCR_USER_PREAMBLE.format(n=len(batch_photos), page_num=batch_page_numbers)
+
+        print(f"[ollama-vision] OCR: batch {batch_start//BATCH_SIZE + 1}/{(len(photos)-1)//BATCH_SIZE + 1} "
+              f"({batch_start+1}-{batch_end} of {len(photos)})", flush=True)
+
+        bt0 = time.time()
+        try:
+            response = chat_with_images(
+                user_text,
+                batch_photos,
+                system=OCR_SYSTEM,
+                model=model,
+                base_url=base_url,
+                timeout=timeout,
+            )
+        except Exception as e:
+            elapsed = time.time() - t0
+            return {
+                "intake_dir": intake_dir,
+                "copied_photos": photos,
+                "prompt_file": None,
+                "codex_returncode": 1,
+                "codex_err_tail": f"Ollama OCR batch failed at photos {batch_start+1}-{batch_end} after {time.time()-bt0:.1f}s: {e}",
+                "transcripts_copied_back": None,
+            }
+        belapsed = time.time() - bt0
+        print(f"[ollama-vision] OCR: batch done in {belapsed:.1f}s ({len(response)} chars)", flush=True)
+
+        # Parse the response into per-page transcripts
+        transcripts = parse_ocr_response(response, batch_page_numbers)
+        for page_num, content in transcripts.items():
+            out_path = intake_dir / f"{page_num:02d}.transcript.md"
+            out_path.write_text(content, encoding="utf-8")
+            all_written.append(out_path)
+            print(f"[ollama-vision] OCR: wrote {out_path.name} ({len(content)} chars)", flush=True)
+
+        if not transcripts:
+            print(f"[ollama-vision] OCR: WARNING - batch {batch_start//BATCH_SIZE + 1} returned no parseable sections. "
+                  f"Response starts: {response[:200]}", flush=True)
+
     elapsed = time.time() - t0
-    print(f"[ollama-vision] OCR: response in {elapsed:.1f}s ({len(response)} chars)", flush=True)
+    print(f"[ollama-vision] OCR: all batches done in {elapsed:.1f}s, {len(all_written)} transcripts", flush=True)
 
-    # Parse the response into per-page transcripts
-    transcripts = parse_ocr_response(response, page_numbers)
-    written = []
-    for page_num, content in transcripts.items():
-        out_path = intake_dir / f"{page_num:02d}.transcript.md"
-        out_path.write_text(content, encoding="utf-8")
-        written.append(out_path)
-        print(f"[ollama-vision] OCR: wrote {out_path} ({len(content)} chars)", flush=True)
-
-    if not written:
+    if not all_written:
         return {
             "intake_dir": intake_dir,
             "copied_photos": photos,
             "prompt_file": None,
             "codex_returncode": 1,
-            "codex_err_tail": f"Ollama OCR returned no parseable sections. Response starts: {response[:500]}",
+            "codex_err_tail": "Ollama OCR returned no parseable sections across all batches.",
             "transcripts_copied_back": None,
         }
 
@@ -227,7 +245,7 @@ def run_ocr(
         "prompt_file": None,
         "codex_returncode": 0,
         "codex_err_tail": "",
-        "transcripts_copied_back": written,
+        "transcripts_copied_back": all_written,
     }
 
 
