@@ -720,6 +720,7 @@ def auto_commit_and_push(slug: str, total_awarded: int, total_available: int) ->
         f"pages/index.html",
         f"pages/assets/css/styles.css",
         f"pages/assets/js/feedback.js",
+        f"pages/assets/photos/{slug}",
         f"papers/{slug}/kvdb-bucket.txt",
     ]
     for p in paths_to_add:
