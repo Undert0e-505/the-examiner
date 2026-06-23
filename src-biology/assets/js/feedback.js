@@ -1,0 +1,341 @@
+/*
+ * the-examiner — per-criterion feedback logic
+ *
+ * Loaded as a deferred script on every per-assessment page. The
+ * HTML carries the criterion markup; this file wires up the
+ * agree / disagree / "I read it as X" controls and the
+ * "send all" / "clear all" rail actions.
+ *
+ * State model:
+ *   - Per-criterion: localStorage[examiner:feedback:<bucket>:<criterion_id>]
+ *     = { mode: "AWARD"|"DISAGREE"|"NOTE", note: "...", saved_at: ISO }
+ *   - On load: restore any saved state into the UI.
+ *   - Save button: writes to localStorage only. Not sent yet.
+ *   - "Send all feedback" button: collects all saved items and
+ *     PUTs them to https://kvdb.io/<bucket>/student-feedback
+ *     as JSON. Anonymous, no auth. Failures show a browser alert.
+ *
+ * Privacy:
+ *   - The script never reads the student's name or email. The
+ *     bucket id is on <body data-kvdb-bucket="...">.
+ *   - All criterion ids are stable per-paper so the saved state
+ *     follows the user across page loads on the same device.
+ */
+(function () {
+  'use strict';
+
+  var BUCKET = document.body.getAttribute('data-kvdb-bucket') || '';
+  var STORAGE_PREFIX = 'examiner:feedback:';
+  var BATCH_KEY = STORAGE_PREFIX + (BUCKET || 'unknown');
+
+  // ---- storage helpers ----
+  function storageKey(criterionId) { return BATCH_KEY + ':' + criterionId; }
+  function loadLocal(criterionId) {
+    try {
+      var raw = localStorage.getItem(storageKey(criterionId));
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  function saveLocal(criterionId, payload) {
+    try { localStorage.setItem(storageKey(criterionId), JSON.stringify(payload)); }
+    catch (e) {}
+  }
+  function clearLocal(criterionId) {
+    try { localStorage.removeItem(storageKey(criterionId)); }
+    catch (e) {}
+  }
+
+  // ---- rail counter ----
+  function updateRailCount() {
+    var responded = 0;
+    var total = 0;
+    document.querySelectorAll('.criterion').forEach(function (c) {
+      total++;
+      var id = c.getAttribute('data-criterion-id');
+      if (id && loadLocal(id)) responded++;
+    });
+    var el = document.getElementById('rail-feedback-count');
+    if (el) el.textContent = String(responded);
+    var btn = document.getElementById('send-all-btn');
+    if (btn) btn.disabled = (responded === 0);
+  }
+
+  // ---- per-criterion wiring ----
+  document.querySelectorAll('.criterion').forEach(function (critEl) {
+    var id = critEl.getAttribute('data-criterion-id');
+    var fb = critEl.querySelector('.feedback');
+    if (!id || !fb) return;
+    var btns = fb.querySelectorAll('.fb-btn');
+    var disagreeNote = fb.querySelector('.fb-note[data-mode="disagree"]');
+    var noteNote = fb.querySelector('.fb-note[data-mode="note"]');
+    var saveBtn = fb.querySelector('.fb-save');
+    var status = fb.querySelector('.fb-status');
+
+    function currentNoteFor(mode) {
+      if (mode === 'DISAGREE') return disagreeNote.value;
+      if (mode === 'NOTE')     return noteNote.value;
+      return '';
+    }
+
+    function applyState(mode, note, statusKind) {
+      fb.setAttribute('data-mode', mode || '');
+      btns.forEach(function (b) {
+        if (b.getAttribute('data-mode') === mode) b.classList.add('active');
+        else b.classList.remove('active');
+      });
+      if (mode === 'DISAGREE') disagreeNote.value = note;
+      if (mode === 'NOTE')     noteNote.value = note;
+      if (status) {
+        status.className = 'fb-status' + (statusKind ? ' ' + statusKind : '');
+        if (statusKind === 'saved')     status.textContent = '✓ saved locally';
+        else if (statusKind === 'sent') status.textContent = '✓ sent';
+        else if (statusKind === 'error') status.textContent = '! save failed';
+        else status.textContent = '';
+      }
+    }
+
+    // Restore from localStorage
+    var saved = loadLocal(id);
+    if (saved) applyState(saved.mode, saved.note || '', 'saved');
+
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var mode = btn.getAttribute('data-mode');
+        applyState(mode, currentNoteFor(mode), '');
+        saveBtn.disabled = false;
+      });
+    });
+
+    [disagreeNote, noteNote].forEach(function (note) {
+      if (!note) return;
+      note.addEventListener('input', function () {
+        var mode = fb.getAttribute('data-mode');
+        if (mode) saveBtn.disabled = false;
+      });
+    });
+
+    saveBtn.addEventListener('click', function () {
+      var mode = fb.getAttribute('data-mode');
+      if (!mode) { applyState('', '', ''); return; }
+      var note = currentNoteFor(mode);
+      var payload = { mode: mode, note: note, saved_at: new Date().toISOString() };
+      saveLocal(id, payload);
+      applyState(mode, note, 'saved');
+      saveBtn.disabled = true;
+      updateRailCount();
+    });
+  });
+
+  // ---- rail: send all + clear all ----
+  var sendAllBtn = document.getElementById('send-all-btn');
+  if (sendAllBtn) {
+    sendAllBtn.addEventListener('click', function () {
+      var items = [];
+      document.querySelectorAll('.criterion').forEach(function (c) {
+        var id = c.getAttribute('data-criterion-id');
+        var saved = id ? loadLocal(id) : null;
+        if (saved) items.push({ criterion_id: id, mode: saved.mode, note: saved.note || '' });
+      });
+      if (!items.length) return;
+      if (!BUCKET) {
+        alert('No KVdb bucket configured for this paper.');
+        return;
+      }
+      var url = 'https://kvdb.io/' + BUCKET + '/student-feedback';
+      sendAllBtn.disabled = true;
+      sendAllBtn.textContent = 'Sending…';
+      // Snapshot the ids we are about to upload, BEFORE the fetch resolves,
+      // so we can mark only those criteria as "sent" on success. Previously
+      // this loop marked every criterion on the page as "sent" — which was
+      // misleading for criteria that had no localStorage entry (and thus
+      // were silently skipped from the payload).
+      var uploadedIds = items.map(function (it) { return it.criterion_id; });
+      fetch(url, {
+        method: 'PUT',
+        // kvdb.io's PUT endpoint accepts text/plain only -- JSON
+        // bodies are rejected with 400. Send the JSON payload as a
+        // string with the text/plain content type, then the bucket
+        // stores the JSON text verbatim. The feedback-harvester
+        // reads it back and JSON.parse()s on the way in.
+        headers: { 'Content-Type': 'text/plain' },
+        body: JSON.stringify({ batch: BATCH_KEY, items: items, sent_at: new Date().toISOString() })
+      }).then(function (r) {
+        if (r.ok) {
+          uploadedIds.forEach(function (cid) {
+            var c = document.querySelector('.criterion[data-criterion-id="' + cid + '"]');
+            if (!c) return;
+            var s = c.querySelector('.fb-status');
+            if (s) { s.className = 'fb-status saved'; s.textContent = '\u2713 sent'; }
+          });
+          // Reset the button to a clean state so the next click is unambiguous.
+          sendAllBtn.disabled = false;
+          sendAllBtn.textContent = 'Send all feedback';
+        } else {
+          sendAllBtn.disabled = false;
+          sendAllBtn.textContent = 'Send all feedback';
+          alert('Send failed: ' + r.status + ' ' + r.statusText);
+        }
+      }).catch(function (e) {
+        sendAllBtn.disabled = false;
+        sendAllBtn.textContent = 'Send all feedback';
+        alert('Send failed: ' + e.message);
+      });
+    });
+  }
+
+  var clearAllBtn = document.getElementById('clear-all-btn');
+  if (clearAllBtn) {
+    clearAllBtn.addEventListener('click', function () {
+      if (!confirm('Clear all responses for this paper?\n\nThis will also delete the server-side feedback at the KVdb bucket for this paper. The bucket will be empty after this.')) return;
+
+      // 1. Clear localStorage and UI state (per criterion).
+      document.querySelectorAll('.criterion').forEach(function (c) {
+        var id = c.getAttribute('data-criterion-id');
+        if (id) clearLocal(id);
+        var fb = c.querySelector('.feedback');
+        if (fb) {
+          fb.setAttribute('data-mode', '');
+          fb.querySelectorAll('.fb-btn').forEach(function (b) { b.classList.remove('active'); });
+          fb.querySelectorAll('.fb-note').forEach(function (n) { n.value = ''; });
+          var s = fb.querySelector('.fb-status');
+          if (s) { s.className = 'fb-status'; s.textContent = ''; }
+          var sv = fb.querySelector('.fb-save');
+          if (sv) sv.disabled = true;
+        }
+      });
+      updateRailCount();
+
+      // 2. Also DELETE the server-side feedback at the bucket,
+      //    so the rail count and the bucket are in sync after
+      //    clear. Without this, reloading the page would
+      //    re-hydrate the responses from the bucket and the
+      //    "clear" would have been a no-op from the server's
+      //    point of view.
+      //
+      //    Failures are non-fatal: the local state is already
+      //    cleared, and a stale bucket entry will just get
+      //    overwritten on the next "Send all". The user gets
+      //    a browser alert so they can retry if they care.
+      if (BUCKET) {
+        var delUrl = 'https://kvdb.io/' + BUCKET + '/student-feedback';
+        var origText = clearAllBtn.textContent;
+        clearAllBtn.disabled = true;
+        clearAllBtn.textContent = 'Clearing bucket\u2026';
+        fetch(delUrl, { method: 'DELETE' })
+          .then(function (r) {
+            clearAllBtn.disabled = false;
+            clearAllBtn.textContent = origText;
+            if (!r.ok) {
+              alert('Local state cleared, but the bucket delete failed (' + r.status + '). The next page reload will re-hydrate the old responses. Try again, or "Send all" with the new state to overwrite.');
+            }
+          })
+          .catch(function (e) {
+            clearAllBtn.disabled = false;
+            clearAllBtn.textContent = origText;
+            alert('Local state cleared, but the bucket delete failed (' + e.message + '). The next page reload will re-hydrate the old responses. Try again, or "Send all" with the new state to overwrite.');
+          });
+      }
+    });
+  }
+
+  // ---- accordion: open on click or keyboard activation ----
+  document.querySelectorAll('.qhead').forEach(function (head) {
+    head.addEventListener('click', function () {
+      var section = head.closest('.qsection');
+      var open = section.getAttribute('data-open') === 'true';
+      section.setAttribute('data-open', open ? 'false' : 'true');
+      head.setAttribute('aria-expanded', open ? 'false' : 'true');
+    });
+  });
+
+  // ---- open the first two questions on desktop on first load ----
+  if (window.matchMedia('(min-width: 1024px)').matches) {
+    document.querySelectorAll('.qsection').forEach(function (s, i) {
+      if (i < 2) {
+        s.setAttribute('data-open', 'true');
+        var head = s.querySelector('.qhead');
+        if (head) head.setAttribute('aria-expanded', 'true');
+      }
+    });
+  }
+
+  updateRailCount();
+})();
+
+
+  // ---- answer-photo lightbox (added 2026-06-16) ----
+  // Thumbs are <a class="qthumb" href="...originals/NN.jpg"
+  // data-lightbox="Q0X.Y" data-page="N" data-subq="Q0X.Y">. Clicking
+  // opens a full-size image in a centered modal. Esc or click-outside
+  // closes. The thumb blocks are emitted by publish.py's
+  // _render_qthumbs_criterion helper, fed by
+  // parse_criterion_block's "Transcript section covered" regex.
+  //
+  // Bind-once guard: the IIFE wrapper already isolates state, but if
+  // the script is ever included twice on the same page we don't want
+  // a duplicate click handler.
+  if (!window.__jimothy_qlightbox_bound) {
+    window.__jimothy_qlightbox_bound = true;
+
+    (function () {
+      var overlay = null;
+
+      function close() {
+        if (overlay) {
+          overlay.remove();
+          overlay = null;
+          document.removeEventListener('keydown', onKey);
+        }
+      }
+
+      function onKey(e) {
+        if (e.key === 'Escape') close();
+      }
+
+      function open(href, caption) {
+        close();
+        overlay = document.createElement('div');
+        overlay.className = 'qlightbox';
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', 'Your answer photo, full size');
+
+        var img = document.createElement('img');
+        img.src = href;
+        img.alt = caption || 'Your answer photo';
+        overlay.appendChild(img);
+
+        if (caption) {
+          var cap = document.createElement('div');
+          cap.className = 'qlightbox-caption';
+          cap.textContent = caption;
+          overlay.appendChild(cap);
+        }
+
+        overlay.addEventListener('click', function (e) {
+          // Click anywhere in the overlay (including the image) closes.
+          // The image is inside the overlay so a click on it bubbles up.
+          close();
+        });
+
+        document.addEventListener('keydown', onKey);
+        document.body.appendChild(overlay);
+      }
+
+      document.querySelectorAll('.qthumb').forEach(function (a) {
+        a.addEventListener('click', function (e) {
+          e.preventDefault();
+          var page = a.getAttribute('data-page') || '';
+          var subq = a.getAttribute('data-subq');
+          var caption;
+          if (subq) {
+            caption = 'Full size \u2014 ' + subq + ', page ' + page;
+          } else {
+            var q = (a.closest('.qsection') || {}).id || '';
+            caption = 'Full size - ' + (q ? q.toUpperCase() + ', ' : '') + 'page ' + page;
+          }
+          open(a.getAttribute('href'), caption);
+        });
+      });
+    })();
+  }
