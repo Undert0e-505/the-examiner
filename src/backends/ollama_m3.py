@@ -1,5 +1,5 @@
 """
-src/backends/ollama_m3.py ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Ollama-m3 adapter for the-examiner.
+src/backends/ollama_m3.py ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Ollama adapter for the-examiner.
 
 A drop-in alternative to the Codex codex_lane path. Instead of
 spinning up a disposable Codex sandbox, we call Ollama's
@@ -228,13 +228,13 @@ def discover_with_ollama_m3(
     base_url: str = DEFAULT_BASE_URL,
     timeout: float = DEFAULT_TIMEOUT,
 ) -> dict:
-    """Run the discover task on Ollama-m3 and write DISCOVERY.json to
+    """Run the discover task on Ollama and write DISCOVERY.json to
     the sandbox-shaped path. Returns the parsed dict."""
     if not photo_paths:
         raise ValueError("photo_paths must be non-empty")
     user_text = DISCOVERY_USER_TEMPLATE.format(n=len(photo_paths))
     print(
-        f"[ollama-m3] discover: sending {len(photo_paths)} photos to "
+        f"[ollama] discover: sending {len(photo_paths)} photos to "
         f"{model} at {base_url} (timeout {timeout:.0f}s)",
         flush=True,
     )
@@ -248,12 +248,12 @@ def discover_with_ollama_m3(
         timeout=timeout,
     )
     elapsed = time.time() - t0
-    print(f"[ollama-m3] discover: response in {elapsed:.1f}s", flush=True)
+    print(f"[ollama] discover: response in {elapsed:.1f}s", flush=True)
     try:
-        print(f"[ollama-m3] discover: cover_paper_code={parsed.get('cover_paper_code')!r}", flush=True)
+        print(f"[ollama] discover: cover_paper_code={parsed.get('cover_paper_code')!r}", flush=True)
     except UnicodeEncodeError:
         # Windows console may be cp1252; the data is fine, just the print.
-        print("[ollama-m3] discover: cover_paper_code=<unprintable>", flush=True)
+        print("[ollama] discover: cover_paper_code=<unprintable>", flush=True)
 
     # Sanity-check: must have page_numbers key with at least one entry
     if "page_numbers" not in parsed or not isinstance(parsed["page_numbers"], dict):
@@ -266,5 +266,5 @@ def discover_with_ollama_m3(
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "DISCOVERY.json"
     out_path.write_text(json.dumps(parsed, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"[ollama-m3] discover: wrote {out_path}", flush=True)
+    print(f"[ollama] discover: wrote {out_path}", flush=True)
     return parsed

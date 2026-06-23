@@ -442,11 +442,11 @@ def wait_for_photos(
 def auto_discover(
     slug: str | None,
     photos_hint: int | None,
-    engine: str = "ollama-m3",
+    engine: str = "ollama",
 ) -> dict:
     """Run the discovery pass: wait for the latest N photos to
     land in the cache, run the chosen engine (Codex default, or
-    Ollama-m3 opt-in) to identify the paper + page order, rename
+    Ollama opt-in) to identify the paper + page order, rename
     the photos in the real repo's intake/<slug>/, and return the
     discovered slug + page_order.
 
@@ -723,7 +723,7 @@ def run_pipeline(
     skip_codex: bool = False,
     auto_discover_mode: bool = False,
     photos_hint: int | None = None,
-    engine: str = "ollama-m3",
+    engine: str = "ollama",
 ) -> dict:
     """End-to-end pipeline. Returns a dict with the run's artifacts
     and per-step status. The orchestrator's chat trigger calls this
@@ -896,7 +896,7 @@ def run_pipeline(
         _log_step_start("3/8", "stage+ocr")
         t0 = time.time()
         if not dry_run:
-            if engine == "ollama-m3":
+            if engine == "ollama":
                 # Ollama vision path - no Codex
                 page_numbers = page_order if page_order is not None else list(range(1, len(photo_paths) + 1))
                 ocr = ollama_vision.run_ocr(
@@ -943,7 +943,7 @@ def run_pipeline(
         _log_step_start("4/8", "marking")
         t0 = time.time()
         if not dry_run:
-            if engine == "ollama-m3":
+            if engine == "ollama":
                 # Ollama vision path - no Codex
                 mark = ollama_vision.run_marking(slug=slug)
             else:
@@ -985,7 +985,7 @@ def run_pipeline(
         # Engine label: what the footer renders next to "Using X for OCR".
         # The user sees this on the published page; pick the friendly
         # names here so the pipeline can stay engine-agnostic
-        # internally (it just passes "codex" or "ollama-m3").
+        # internally (it just passes "codex" or "ollama").
         engine_label = "ChatGPT (Codex pass)" if engine == "codex" else "Ollama (qwen3.5:397b)"
         # First-render timestamp. Distinct from the page's
         # "Last updated" line (which refreshes on every feedback
@@ -1221,9 +1221,9 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="Expected number of photos for --auto-discover. If omitted, the "
                         "orchestrator uses every photo currently in the gateway cache.")
     p.add_argument(
-        "--engine", default="ollama-m3", choices=["codex", "ollama-m3"],
+        "--engine", default="ollama", choices=["codex", "ollama"],
         help="LLM backend: 'codex' (default, original sandbox path) or "
-             "'ollama-m3' (calls Ollama directly with photos as inline "
+             "'ollama' (calls Ollama directly with photos as inline "
              "image attachments, no sandbox). Currently affects the "
              "auto-discover step; OCR + marking still use Codex.",
     )

@@ -239,7 +239,7 @@ def run_ollama_m3_lane(
     photo_paths: list[Path],
     job_name: str,
 ) -> dict:
-    """Alternative to run_codex_lane: call Ollama-m3 directly with
+    """Alternative to run_codex_lane: call Ollama directly with
     all photos inline as image attachments. Writes DISCOVERY.json
     to the same sandbox-shaped path the Codex path uses, so the
     downstream read_discovery_json() consumer is engine-agnostic.
@@ -351,7 +351,7 @@ def discover_batch(
     engine: str = "codex",
 ) -> dict:
     """End-to-end discovery: stage photos, run the chosen engine
-    (Codex default, or Ollama-m3 opt-in), parse the result, return
+    (Codex default, or Ollama opt-in), parse the result, return
     the discovered slug + page order. The caller is responsible for
     renaming the staged photos in the real repo (via
     restage_real_repo_after_discovery) before running the OCR pass.
@@ -399,13 +399,13 @@ def discover_batch(
         prompt_file = None
 
     # 3. Run the chosen engine
-    if engine == "ollama-m3":
+    if engine == "ollama":
         # No sandbox: we just call Ollama and write DISCOVERY.json
         # to the same sandbox-shaped path the codex path uses.
         rc = run_ollama_m3_lane(copied, job_name)
         if rc["returncode"] != 0:
             raise RuntimeError(
-                f"ollama-m3 discover failed (returncode {rc['returncode']})."
+                f"ollama discover failed (returncode {rc['returncode']})."
             )
     else:
         codex = run_codex_lane(
@@ -506,9 +506,9 @@ def parse_args(argv=None) -> argparse.Namespace:
     )
     p.add_argument("--yes", action="store_true", help="Skip confirmation prompt.")
     p.add_argument(
-        "--engine", default="codex", choices=["codex", "ollama-m3"],
+        "--engine", default="codex", choices=["codex", "ollama"],
         help="LLM backend: 'codex' (default, original sandbox path) or "
-             "'ollama-m3' (calls Ollama directly with photos as inline "
+             "'ollama' (calls Ollama directly with photos as inline "
              "image attachments, no sandbox).",
     )
     return p.parse_args(argv)
