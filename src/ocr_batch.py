@@ -143,45 +143,29 @@ def run_codex_lane(
         "-ExecutionPolicy", "Bypass",
         "-File", str(WRAPPER),
         "-SourceRepo", str(REPO_ROOT),
-        "-JobName", job_name,
         "-PromptFile", str(prompt_file),
-        "-UseCopy",
         "-Yes",
-        "-Force",
         "-ProgressIntervalSec", str(progress_interval_sec),
     ]
     print(f"About to run: {' '.join(cmd)}", flush=True)
     return subprocess.run(cmd, check=False)
 
 
-def copy_transcripts_back(sandbox_path: Path, intake_dir: Path) -> list[Path]:
-    """Copy *.transcript.md files from the sandbox's intake/<slug>/ to the
-    real repo's intake/<slug>/. Existing transcripts at the same paths are
-    renamed to *.transcript.md.bak first, so a re-OCR preserves the old
-    transcript for diff/recovery.
+def copy_transcripts_back(repo_root: Path, intake_dir: Path) -> list[Path]:
+    """List *.transcript.md files in the repo's intake/<slug>/.
 
-    The intake slug in the sandbox is the same as in the real repo (the
-    wrapper copies the source tree verbatim, with the same relative paths).
+    Since the wrapper runs Codex in-place in the repo, transcripts
+    are already in the right location. This function just verifies
+    they exist and returns the list.
     """
-    if not sandbox_path.exists():
+    if not intake_dir.exists():
         raise FileNotFoundError(
-            f"Sandbox not found at {sandbox_path}. Did the codex_lane wrapper run?"
-        )
-    sandbox_intake = sandbox_path / "intake" / intake_dir.name
-    if not sandbox_intake.exists():
-        raise FileNotFoundError(
-            f"Sandbox intake not found at {sandbox_intake}. "
+            f"Intake dir not found at {intake_dir}. "
             f"Was the photos-staging step done before the codex_lane run?"
         )
     copied = []
-    for src in sorted(sandbox_intake.glob("*.transcript.md")):
-        dest = intake_dir / src.name
-        if dest.exists():
-            bak = dest.with_suffix(".transcript.md.bak")
-            print(f"Backing up existing {dest} to {bak}", flush=True)
-            shutil.move(dest, bak)
-        shutil.copy2(src, dest)
-        copied.append(dest)
+    for src in sorted(intake_dir.glob("*.transcript.md")):
+        copied.append(src)
     return copied
 
 
@@ -258,7 +242,7 @@ def run_ocr(
         # The wrapper writes 20 lines of codex.err.log into CODEX_RESULT.md
         # but the orchestrator's abort path doesn't read that file.
         codex_err_tail = ""
-        err_log = Path("D:/dev/codex-sandboxes") / job_name / ".codex_run" / "codex.err.log"
+        err_log = REPO_ROOT / ".codex_run" / "codex.err.log"
         if err_log.exists():
             err_lines = err_log.read_text(encoding="utf-8", errors="replace").splitlines()
             codex_err_tail = "\n".join(err_lines[-30:])
@@ -275,7 +259,7 @@ def run_ocr(
 
     transcripts_copied_back = None
     if not skip_copy_back:
-        sandbox_path = Path("D:/dev/codex-sandboxes") / job_name
+        sandbox_path = REPO_ROOT
         transcripts_copied_back = copy_transcripts_back(sandbox_path, intake_dir)
         print(f"Copied {len(transcripts_copied_back)} transcripts back", flush=True)
     return {

@@ -1,5 +1,5 @@
 """
-src/backends/ollama_m3.py — Ollama-m3 adapter for the-examiner.
+src/backends/ollama_m3.py ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â Ollama-m3 adapter for the-examiner.
 
 A drop-in alternative to the Codex codex_lane path. Instead of
 spinning up a disposable Codex sandbox, we call Ollama's
@@ -28,7 +28,7 @@ from typing import Any, Iterable
 import requests
 
 DEFAULT_BASE_URL = "http://127.0.0.1:11434"
-DEFAULT_MODEL = "minimax-m3:cloud"
+DEFAULT_MODEL = "qwen3.5:397b-cloud"
 DEFAULT_TIMEOUT = 600.0  # large: 26 images on a cloud proxy can be slow
 
 
@@ -162,7 +162,7 @@ def chat_json_with_images(
 DISCOVERY_SYSTEM = """You are an OCR/vision assistant. You read photos of a
 printed GCSE exam paper and identify: (a) the paper code (board + spec + paper
 number + tier) and (b) the printed page number on each photo. You are not being
-asked to read the student's handwritten answers in this pass — that is a
+asked to read the student's handwritten answers in this pass ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â that is a
 separate, later pass. You MUST respond with valid JSON and nothing else."""
 
 
@@ -172,7 +172,7 @@ visible on the page (usually a small number at the top or bottom of the
 printed page). For the FIRST photo (the cover), you must also report the
 paper code (e.g. "8462/1H") and a one-line human-readable cover description.
 
-The photos are attached inline. You do not need to read the file system —
+The photos are attached inline. You do not need to read the file system ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â
 just look at each image.
 
 ## Rules
@@ -188,7 +188,7 @@ just look at each image.
 - `question_numbers` is best-effort: a dict from photo index (string) to a
   list of question numbers visible on that photo. Use the paper's own
   notation (e.g. ["Q01.1", "Q01.2"] or ["1.1", "1.2"]). For cover photos,
-  use an empty list. Do not over-engineer this — best-effort is fine.
+  use an empty list. Do not over-engineer this ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â best-effort is fine.
 - `notes` is a free-form string for anything unusual (smudged page numbers,
   photos that look like duplicates, photos that don't belong, etc.). Empty
   string if nothing to report.
@@ -223,7 +223,7 @@ def discover_with_ollama_m3(
     photo_paths: list[Path],
     job_name: str,
     *,
-    sandbox_root: Path = Path("D:/dev/codex-sandboxes"),
+    sandbox_root: Path = Path("D:/dev/the-examiner"),
     model: str = DEFAULT_MODEL,
     base_url: str = DEFAULT_BASE_URL,
     timeout: float = DEFAULT_TIMEOUT,
@@ -262,7 +262,7 @@ def discover_with_ollama_m3(
         )
 
     # Write to sandbox-shaped path so read_discovery_json() finds it
-    out_dir = sandbox_root / job_name / "intake"
+    out_dir = sandbox_root / "intake"
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "DISCOVERY.json"
     out_path.write_text(json.dumps(parsed, indent=2, ensure_ascii=False), encoding="utf-8")

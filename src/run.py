@@ -95,6 +95,7 @@ import papers_sync
 import publish
 import send_email
 from generate_prompts import write_prompt_to_spec_path
+from backends import ollama_vision
 
 REPO_ROOT = publish.REPO_ROOT  # D:/dev/the-examiner
 GATEWAY_CACHE = Path("C:/Users/openclaw-agent/.openclaw/media/inbound")
@@ -136,7 +137,7 @@ def parse_trigger(message: str) -> dict:
           "count": int | None,       # N from "/mark N pages", or None
         }
 
-    parse_trigger is purely a regex-based parser — it doesn't talk
+    parse_trigger is purely a regex-based parser Ã¢â‚¬â€ it doesn't talk
     to Telegram, doesn't ask, doesn't fail on missing fields. It
     returns what it found. The caller is responsible for blocking
     on missing required fields and asking the user.
@@ -191,7 +192,7 @@ def parse_trigger(message: str) -> dict:
     auto_discover = (slug is None) and (order is None)
 
     # If the user said "N pages" and ALSO said "photos=M" where
-    # M != N, that's a conflict — caller should warn but we'll
+    # M != N, that's a conflict Ã¢â‚¬â€ caller should warn but we'll
     # trust photos=M as the explicit override.
     return {
         "slug": slug,
@@ -441,7 +442,7 @@ def wait_for_photos(
 def auto_discover(
     slug: str | None,
     photos_hint: int | None,
-    engine: str = "codex",
+    engine: str = "ollama-m3",
 ) -> dict:
     """Run the discovery pass: wait for the latest N photos to
     land in the cache, run the chosen engine (Codex default, or
@@ -596,10 +597,15 @@ def git(*args: str, cwd: Path | None = None, check: bool = True) -> subprocess.C
     gracefully, like `git status`).
     """
     cmd = ["git", *args]
-    print(f"  $ {' '.join(cmd)}", flush=True)
+    _cmd_str = ' '.join(cmd)
+    try:
+        print(f"  $ {_cmd_str}", flush=True)
+    except UnicodeEncodeError:
+        print(f"  $ {_cmd_str.encode('ascii', 'replace').decode('ascii')}", flush=True)
     return subprocess.run(
         cmd, cwd=str(cwd or REPO_ROOT), check=check,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+        encoding="utf-8", errors="replace",
     )
 
 
@@ -623,7 +629,7 @@ def auto_commit_and_push(slug: str, total_awarded: int, total_available: int) ->
     is checked out on `main`. The orchestrator has run on
     `m3-adapter` and on feature branches in the past, and a
     plain `git push origin main` is a silent no-op in that
-    case (local `main` ref doesn't move → "Everything up-to-
+    case (local `main` ref doesn't move Ã¢â€ â€™ "Everything up-to-
     date" with no error). The bug bit us on 2026-06-16: a
     fresh 69/100 publish landed on the worktree's current
     branch but never reached origin/main, so GitHub Pages
@@ -651,7 +657,7 @@ def auto_commit_and_push(slug: str, total_awarded: int, total_available: int) ->
             git("add", p)
     pct = round(100 * total_awarded / total_available) if total_available else 0
     msg = (
-        f"publish: render assessment HTML for {slug} — "
+        f"publish: render assessment HTML for {slug} Ã¢â‚¬â€ "
         f"{total_awarded}/{total_available} ({pct}%)"
     )
     # Capture local HEAD before commit so we can verify
@@ -717,7 +723,7 @@ def run_pipeline(
     skip_codex: bool = False,
     auto_discover_mode: bool = False,
     photos_hint: int | None = None,
-    engine: str = "codex",
+    engine: str = "ollama-m3",
 ) -> dict:
     """End-to-end pipeline. Returns a dict with the run's artifacts
     and per-step status. The orchestrator's chat trigger calls this
@@ -890,17 +896,26 @@ def run_pipeline(
         _log_step_start("3/8", "stage+ocr")
         t0 = time.time()
         if not dry_run:
-            ocr = ocr_batch.run_ocr(
-                slug=slug,
-                job_name=f"ocr-{slug}",
-                photo_paths=photo_paths,
-                page_order=page_order,
-                page_contexts=None,
-                batch_id=None,
-                yes=True,
-                skip_copy_back=False,
-                skip_staging=auto_discover_mode,
-            )
+            if engine == "ollama-m3":
+                # Ollama vision path - no Codex
+                page_numbers = page_order if page_order is not None else list(range(1, len(photo_paths) + 1))
+                ocr = ollama_vision.run_ocr(
+                    slug=slug,
+                    page_numbers=page_numbers,
+                    skip_staging=auto_discover_mode,
+                )
+            else:
+                ocr = ocr_batch.run_ocr(
+                    slug=slug,
+                    job_name=f"ocr-{slug}",
+                    photo_paths=photo_paths,
+                    page_order=page_order,
+                    page_contexts=None,
+                    batch_id=None,
+                    yes=True,
+                    skip_copy_back=False,
+                    skip_staging=auto_discover_mode,
+                )
             if ocr["codex_returncode"] != 0:
                 err_tail = ocr.get("codex_err_tail", "").strip()
                 # Surface the actual reason in the log. If the err log
@@ -928,12 +943,16 @@ def run_pipeline(
         _log_step_start("4/8", "marking")
         t0 = time.time()
         if not dry_run:
-            mark = mark_batch.run_marking(
-                slug=slug,
-                job_name=f"mark-{slug}",
-                yes=True,
-                skip_copy_back=False,
-            )
+            if engine == "ollama-m3":
+                # Ollama vision path - no Codex
+                mark = ollama_vision.run_marking(slug=slug)
+            else:
+                mark = mark_batch.run_marking(
+                    slug=slug,
+                    job_name=f"mark-{slug}",
+                    yes=True,
+                    skip_copy_back=False,
+                )
             if mark["codex_returncode"] != 0:
                 err_tail = mark.get("codex_err_tail", "").strip()
                 if err_tail:
@@ -967,7 +986,7 @@ def run_pipeline(
         # The user sees this on the published page; pick the friendly
         # names here so the pipeline can stay engine-agnostic
         # internally (it just passes "codex" or "ollama-m3").
-        engine_label = "ChatGPT (Codex pass)" if engine == "codex" else "minimax-m3"
+        engine_label = "ChatGPT (Codex pass)" if engine == "codex" else "Ollama (qwen3.5:397b)"
         # First-render timestamp. Distinct from the page's
         # "Last updated" line (which refreshes on every feedback
         # PUT). This is the moment the assessment went live.
@@ -1202,7 +1221,7 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="Expected number of photos for --auto-discover. If omitted, the "
                         "orchestrator uses every photo currently in the gateway cache.")
     p.add_argument(
-        "--engine", default="codex", choices=["codex", "ollama-m3"],
+        "--engine", default="ollama-m3", choices=["codex", "ollama-m3"],
         help="LLM backend: 'codex' (default, original sandbox path) or "
              "'ollama-m3' (calls Ollama directly with photos as inline "
              "image attachments, no sandbox). Currently affects the "

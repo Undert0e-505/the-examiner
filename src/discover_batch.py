@@ -227,11 +227,8 @@ def run_codex_lane(
         "-ExecutionPolicy", "Bypass",
         "-File", str(WRAPPER),
         "-SourceRepo", str(REPO_ROOT),
-        "-JobName", job_name,
         "-PromptFile", str(prompt_file),
-        "-UseCopy",
         "-Yes",
-        "-Force",
         "-ProgressIntervalSec", str(progress_interval_sec),
     ]
     print(f"About to run: {' '.join(cmd)}", flush=True)
@@ -258,10 +255,10 @@ def run_ollama_m3_lane(
     return {"returncode": 0, "stdout": json.dumps(parsed)}
 
 
-def read_discovery_json(sandbox_path: Path) -> dict:
-    """Read intake/DISCOVERY.json from the sandbox. Raises
+def read_discovery_json(repo_root: Path) -> dict:
+    """Read intake/DISCOVERY.json from the repo. Raises
     FileNotFoundError if it's missing (Codex failed to write it)."""
-    discovery_path = sandbox_path / "intake" / "DISCOVERY.json"
+    discovery_path = repo_root / "intake" / "DISCOVERY.json"
     if not discovery_path.is_file():
         raise FileNotFoundError(
             f"DISCOVERY.json not found at {discovery_path}. "
@@ -423,9 +420,8 @@ def discover_batch(
                 f"Check the sandbox's CODEX_RESULT.md."
             )
 
-    # 4. Read DISCOVERY.json from the sandbox
-    sandbox_path = Path("D:/dev/codex-sandboxes") / job_name
-    discovery = read_discovery_json(sandbox_path)
+    # 4. Read DISCOVERY.json from the repo (wrapper runs in-place)
+    discovery = read_discovery_json(REPO_ROOT)
 
     cover_paper_code = discovery.get("cover_paper_code", "")
     cover_text = discovery.get("cover_text", "")

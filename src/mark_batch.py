@@ -121,50 +121,34 @@ def run_codex_lane(
         "-ExecutionPolicy", "Bypass",
         "-File", str(WRAPPER),
         "-SourceRepo", str(REPO_ROOT),
-        "-JobName", job_name,
         "-PromptFile", str(prompt_file),
-        "-UseCopy",
         "-Yes",
-        "-Force",
         "-ProgressIntervalSec", str(progress_interval_sec),
     ]
     print(f"About to run: {' '.join(cmd)}", flush=True)
     return subprocess.run(cmd, check=False)
 
 
-def copy_marking_back(sandbox_path: Path, slug: str) -> list[Path]:
-    """Copy Q*.marking.md and SUMMARY.md files from the sandbox's
-    assessments/<slug>/ to the real repo's assessments/<slug>/. Existing
-    marking files at the same paths are renamed to *.marking.md.bak first.
+def copy_marking_back(repo_root: Path, slug: str) -> list[Path]:
+    """List Q*.marking.md and SUMMARY.md files in the repo's
+    assessments/<slug>/ directory.
 
-    The assessments slug in the sandbox is the same as in the real repo.
-    The real repo's assessments/<slug>/ directory is created if it doesn't
-    exist (the marking pass is the first thing to land there).
+    Since the wrapper runs Codex in-place in the repo, marking files
+    are already in the right location. This function just verifies
+    they exist and returns the list.
     """
-    if not sandbox_path.exists():
+    real_assessments = repo_root / "assessments" / slug
+    if not real_assessments.exists():
         raise FileNotFoundError(
-            f"Sandbox not found at {sandbox_path}. Did the codex_lane wrapper run?"
-        )
-    sandbox_assessments = sandbox_path / "assessments" / slug
-    if not sandbox_assessments.exists():
-        raise FileNotFoundError(
-            f"Sandbox assessments not found at {sandbox_assessments}. "
+            f"Assessments dir not found at {real_assessments}. "
             f"Was the prompt told to write to assessments/{slug}/?"
         )
-    real_assessments = REPO_ROOT / "assessments" / slug
-    real_assessments.mkdir(parents=True, exist_ok=True)
     copied = []
     # Match Q01.marking.md, Q02.marking.md, ..., QNN.marking.md, and SUMMARY.md.
     patterns = ["Q*.marking.md", "SUMMARY.md"]
     for pattern in patterns:
-        for src in sorted(sandbox_assessments.glob(pattern)):
-            dest = real_assessments / src.name
-            if dest.exists():
-                bak = dest.with_suffix(dest.suffix + ".bak")
-                print(f"Backing up existing {dest} to {bak}", flush=True)
-                shutil.move(dest, bak)
-            shutil.copy2(src, dest)
-            copied.append(dest)
+        for src in sorted(real_assessments.glob(pattern)):
+            copied.append(src)
     return copied
 
 
@@ -232,8 +216,7 @@ def run_marking(
     )
     marking_files_copied_back = None
     if codex.returncode == 0 and not skip_copy_back:
-        sandbox_path = Path("D:/dev/codex-sandboxes") / job_name
-        marking_files_copied_back = copy_marking_back(sandbox_path, slug)
+        marking_files_copied_back = copy_marking_back(REPO_ROOT, slug)
         print(f"Copied {len(marking_files_copied_back)} marking files back", flush=True)
     # If codex failed, capture the err log tail so the orchestrator can
     # surface the actual reason (rate-limit, auth, model not found, ...)
@@ -243,7 +226,7 @@ def run_marking(
     # and have to dig into the sandbox to find the real reason.
     codex_err_tail = ""
     if codex.returncode != 0:
-        err_log = Path("D:/dev/codex-sandboxes") / job_name / ".codex_run" / "codex.err.log"
+        err_log = REPO_ROOT / ".codex_run" / "codex.err.log"
         if err_log.exists():
             err_lines = err_log.read_text(encoding="utf-8", errors="replace").splitlines()
             # Last 30 lines is the actionable error context
