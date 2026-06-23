@@ -442,21 +442,7 @@ def wait_for_photos(
         f"got {len(batch_photos)}/{count} new photos",
         flush=True,
     )
-    return batch_photos[-count:]
-        time.sleep(poll_interval_sec)
-    # Timed out. Return what we have.
-    all_photos = _list_all()
-    if not all_photos:
-        raise FileNotFoundError(
-            f"timed out after {timeout_sec}s waiting for {count} photos in cache; "
-            f"got 0. The Telegram batch may not have arrived."
-        )
-    print(
-        f"  wait_for_photos: timed out after {timeout_sec}s, "
-        f"got {len(all_photos)}/{count} photos",
-        flush=True,
-    )
-    return all_photos
+    return batch_photos
 
 
 def auto_discover(
