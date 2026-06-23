@@ -1,0 +1,137 @@
+You are operating inside the the-examiner repo at `{{ real_repo }}`.
+You are running in-place in the repo (not a sandbox copy). You can
+read and write files in the repo. **Only write `intake/DISCOVERY.json`**
+— do not modify any other file.
+
+## Task
+
+**Discover** the paper identity and the printed page number for
+each of {{ photos | length }} photos of a GCSE exam paper. The
+photos are the student's handwritten answers, taken with a phone
+from the printed paper. The student wrote on the question paper
+itself, so each photo shows:
+
+- A printed exam page (the question paper)
+- The student's handwritten answers in the answer spaces
+
+Your job is to **identify** what paper this is, and **read the
+printed page number** off each photo. You are NOT being asked to
+OCR the student's answers — that is a separate, later pass.
+
+The {{ photos | length }} photos are:
+
+{%- for p in photos %}
+
+  `{{ p.path }}`  (file index {{ loop.index }})
+{%- endfor %}
+
+## What to produce
+
+**Exactly one file**: `intake/DISCOVERY.json` at the repo root.
+The file must be valid JSON with this exact shape:
+
+```json
+{
+  "cover_paper_code": "8462/1H",
+  "cover_text": "AQA GCSE Chemistry (8462) Higher Tier Paper 1 — Friday 17 May 2024",
+  "page_numbers": {
+    "1": 1,
+    "2": 2,
+    "3": 3,
+    "...": "..."
+  },
+  "question_numbers": {
+    "1": [],
+    "2": ["Q01.1", "Q01.2", "Q01.3"],
+    "3": ["Q01.4", "Q01.5"],
+    "...": "..."
+  },
+  "notes": "Anything unusual — smudged page numbers, photos that look like duplicates, photos that don't belong to this paper, etc.",
+  "confidence": "high | medium | low"
+}
+```
+
+The keys in `page_numbers` and `question_numbers` are the
+**file index** (1-based, matching the order above), and the values
+are what you read off the photo. `page_numbers` is required;
+`question_numbers` is best-effort and may be `[]` for cover photos.
+
+### How to read the page number
+
+The printed page number is usually:
+
+- A small number at the **top of the page**, centred or in a corner
+  (e.g. "2", "3", "4").
+- OR a small number at the **bottom of the page** in a footer.
+
+Some exam boards put it in different places. The exact convention
+varies:
+
+- **AQA** — small number centred at the top of the page.
+- **Edexcel** — small number centred at the top of the page,
+  sometimes with "Turn over" beneath it.
+- **OCR** — small number at the bottom-right of the page.
+
+If a photo has NO printed page number visible (e.g. it is the
+cover, or it is a continuation page that has been cropped), record
+`null` for that file index and note it in `notes`.
+
+### How to read the paper code (cover only)
+
+The cover page is the first photo (file index 1, unless you find
+strong evidence that it isn't — note that in `notes`). On the
+cover, look for:
+
+- The **exam board name** ("AQA", "Edexcel", "OCR", "WJEC",
+  "CCEA", "SQA") — usually in a logo or banner.
+- The **paper code** — usually 4-5 characters, e.g. "8462", "1MA1",
+  "H556", "A870". Sometimes followed by a paper/tier code like
+  "/1H" or "Paper 1H".
+- The **subject** ("Chemistry", "Mathematics", "English
+  Literature", etc.).
+- The **tier** if any ("Higher", "Foundation", "Higher Tier").
+- The **date** ("Friday 17 May 2024", "November 2024", etc.).
+
+Combine these into the `cover_paper_code` field (e.g. "8462/1H")
+and the `cover_text` field (a one-line human-readable description).
+
+### How to read the question numbers
+
+For each photo (other than the cover), look at the printed
+question numbers in the left margin or beside the question text.
+Report them as a list of strings, in the order they appear. Use
+the same notation as the paper uses — "Q01.1" or "1.1" or
+"Question 1(a)" — whatever the paper uses. If a photo spans
+multiple questions, list all of them. If the page is the
+continuation of a question that started on the previous page, you
+can omit it (the marking pass picks it up from the previous
+photo's transcript).
+
+## Hard rules
+
+- **Do not commit.** Do not push. Do not `git add` anything.
+- **Do not run any network command.** No curl, no pip install, no
+  git fetch, no `codex login`, nothing.
+- **Do not modify any file outside `intake/DISCOVERY.json`.**
+- **Do not OCR the student's handwritten answers.** This pass is
+  discovery only. A separate OCR pass will read the answers later.
+- **Do not invent page numbers.** If you cannot read the page
+  number, write `null` and note the uncertainty in `notes`. The
+  orchestrator will fall back to the receipt order (1, 2, 3, ...)
+  for unnumbered photos.
+- **Do not invent paper codes.** If you cannot read the cover
+  clearly, write `"cover_paper_code": "unknown"` and `"confidence":
+  "low"`, and the orchestrator will abort with an email to Aaron.
+
+## After completing
+
+Report in your final message (the one that goes to the wrapper's
+stdout, NOT to a file):
+
+- The path of `intake/DISCOVERY.json` and its line count.
+- The values of `cover_paper_code` and `cover_text`.
+- The full contents of `page_numbers` (so the orchestrator can
+  sanity-check).
+- One sentence on whether you stayed inside the repo (only wrote `intake/DISCOVERY.json`).
+- One sentence on whether you made any network calls.
+- Your overall `confidence` and a one-sentence justification.

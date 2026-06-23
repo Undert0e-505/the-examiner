@@ -1,8 +1,7 @@
-You are operating inside a disposable Codex sandbox at
-`{{ sandbox_dir }}`. The real repo is at `{{ real_repo }}`. The
-sandbox is a fresh copy of the real repo (via the codex_lane
-wrapper's `-UseCopy` mode) with the `origin` remote removed.
-**Do not touch the real repo.** All work happens inside the sandbox.
+You are operating inside the the-examiner repo at `{{ real_repo }}`.
+You are running in-place in the repo (not a sandbox copy). You can
+read and write files in the repo. **Only write the marking files**
+— do not modify any other file.
 
 ## Task
 
@@ -63,7 +62,7 @@ do that.**
 student's answer does not need to match word-for-word, but the
 correct content must be there.
 
-## Inputs (all in this sandbox)
+## Inputs (all in the repo)
 
 **Transcripts ({{ transcripts | length }} files, one per photographed page):**
 {%- for t in transcripts %}
@@ -426,7 +425,7 @@ Report in your final message (the one that goes to the wrapper's
 stdout, NOT to a file):
 - The paths of all {{ question_count + 1 }} output files, in order, with their
   line counts.
-- One sentence on whether you stayed inside the sandbox.
+- One sentence on whether you stayed inside the repo (only wrote marking files).
 - One sentence on whether you made any network calls.
 - The total marks awarded across all {{ question_count }} questions (e.g.
   "47/100").

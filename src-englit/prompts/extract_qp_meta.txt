@@ -1,0 +1,55 @@
+extract_qp.txt — meta
+
+Model
+  minimax-m3:cloud via Ollama. Long context (524288 tokens) so the
+  whole paper fits in one call. format="json" constrains the
+  response shape.
+
+User-side input
+  The per-page text dump from papers/<slug>/raw/<basename>.txt,
+  written by index_papers.py. The "PAPER TEXT:" anchor in the
+  prompt is replaced with the dump.
+
+Output (JSON)
+  {
+    "schema_version": 1,
+    "total_marks": <int|null>,
+    "questions": [
+      {
+        "id": "q<n>" or "q<n>.<m>" (lowercase, dot-separated),
+        "paper_question_number": <printed label, verbatim>,
+        "section": "Section A" | "Section B" | null,
+        "extract": <verbatim source extract / passage / null>,
+        "prompt": <verbatim question instruction>,
+        "marks_available": <int|null>,
+        "page_start": <int, 1-indexed>,
+        "page_end": <int, 1-indexed>
+      }
+    ]
+  }
+
+Validated by llm.py::_validate against an ad-hoc schema
+(extract_questions.py::PAPER_SCHEMA).
+
+Known failure modes
+  - The LLM is *not* bitwise deterministic at temperature=0. A
+    re-run on the same paper can produce slightly different
+    verbatim text, different question splits (e.g. Edexcel Q2
+    might come out as one entry or as two sub-parts), and
+    different per-criterion phrasing. The shape and counts are
+    stable; the words aren't. The committed `paper.json` /
+    `markscheme.json` files are the canonical version; review
+    any re-run output before committing it.
+  - For AQA English Lit, the model often returns paper_question_number
+    as "0 1" / "1 3" (the page-header "0 N" / "1 N" formatting).
+    This is the *correct* AQA interpretation, not a bug.
+  - For AQA English Lit, marks_available is given per question
+    (30 for all 13), but the mark scheme carries an additional
+    AO4 [4 marks] only on Section A questions. The QP schema
+    doesn't know about AO4 — that lives in markscheme.json.
+  - Long inputs (>30 KB) can take 80–180 s on first call.
+    Subsequent calls are similar. Use --timeout 600 --max-retries 1.
+
+Latency budget
+  80–180 s per call for a single paper, 200–400 s per pair (QP + MS).
+  Phase 2 on all three current pairs runs in ~6–8 min total.

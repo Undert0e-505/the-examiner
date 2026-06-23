@@ -1,0 +1,44 @@
+You are extracting a structured mark-scheme from a UK GCSE mark scheme (NOT the question paper).
+
+Your output MUST be a single JSON object with this exact shape:
+
+{
+  "schema_version": 1,
+  "marks": [
+    {
+      "question_ref": <the id of the matching question from paper.json, e.g. "q1", "q1.1", "q13". You do not have paper.json in front of you, but you can infer the id from the printed question number. Use the same scheme as paper.json: "q1" for Edexcel Q1, "q1.1" for AQA "0 1 .1", "q13" for AQA Eng Lit "Question 13".>,
+      "paper_question_number": <the question label as printed in the mark scheme, e.g. "1", "0 1 .1", "Question 13", "09.4">,
+      "total_marks_for_question": <integer, the total marks for this question as printed in the mark scheme. For multi-part AQA questions, this is the sum of marks for all sub-parts belonging to the same question.>,
+      "criteria": [
+        {
+          "ao": <"AO1" / "AO2" / "AO3" / "AO4" / null. Use null for subjects without assessment objectives (Edexcel Maths uses B/M/A process marks per step, not AOs). For AQA English Lit, the "Indicative content" is grouped by AO — read the section headings. For AQA Chemistry, the AO/Spec Ref column header lists the AO for each row.>,
+          "marks": <integer, the marks for this criterion. If the mark scheme has a single answer worth 1 mark, marks=1. If the criterion is grouped under an AO heading with no explicit marks (AQA Eng Lit), divide the question's marks evenly across the AOs (e.g. 30 marks over 3 AOs = 10 each) — but ONLY if the document doesn't list per-AO marks.>,
+          "indicative_content": [<array of strings, the bullet points / answer statements listed under this criterion. Preserve the original wording as much as possible — these are what the examiner marks against.>],
+          "spec_refs": [<array of strings, e.g. ["4.3.4", "4.4.2.5", "RPA2"] for AQA Chemistry, []. For subjects without spec refs (Maths, Eng Lit), use an empty array.>]
+        }
+      ],
+      "page_start": <1-indexed page where this mark-scheme entry begins>,
+      "page_end": <1-indexed page where this mark-scheme entry ends>
+    }
+  ]
+}
+
+Rules:
+- Output ONLY the JSON object, no commentary, no code fences, no preamble.
+- Group sub-parts under the same question. For AQA Chemistry, "0 1 .1", "0 1 .2", "0 1 .3" are sub-parts of question "0 1" and share one entry in the `marks` array, with their individual mark criteria in `criteria[]`.
+- For AQA English Lit, each "Question 13" / "Question 14" etc. is one entry. The criteria are the AOs (AO1, AO2, AO3 typically), and the indicative content is the bullets under each AO.
+- For AQA Chemistry, criteria are usually a single bullet of "mark-for-this-row" content. The AO and Spec Ref come from the right-hand columns.
+- For Edexcel Maths, the mark scheme is often a single column of "Answer — Marks". Each row is a sub-step (B/M/A marks). Group them under the question they belong to (Q1's sub-steps all go under one `question_ref: "q1"` entry). `ao` is null and `spec_refs` is empty.
+- Question numbering alignment with paper.json:
+  * Edexcel "1" → "q1", "2" → "q2", etc.
+  * AQA "0 1" → "q1", "0 1 .1" → "q1.1", "0 1 .2" → "q1.2", "0 2" → "q2", etc. The leading "0" is a section number, not part of the question id; strip it.
+  * AQA Eng Lit "Question 13" → "q13", "Question 14" → "q14", etc.
+- `page_start` / `page_end` use the "----- PAGE N -----" markers in the input.
+- Skip the cover page and any "Edexcel and BTEC Qualifications" / standardisation panel pages. Only the actual mark-scheme rows count.
+- If a question appears in paper.json but the mark scheme has no entry for it (or vice versa), do not invent one. Only extract what is in the mark scheme.
+- If you cannot find a value, use null for nullable fields (marks_available, total_marks_for_question) and empty arrays for arrays. Do not silently drop entries.
+
+The text below has page markers ("----- PAGE N -----") so you can set page_start / page_end correctly.
+
+MARK SCHEME TEXT:
+{body}

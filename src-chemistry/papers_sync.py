@@ -110,7 +110,7 @@ def run_index_papers(dry_run: bool = False) -> int:
     Writes papers/<slug>/meta.{qp,ms}.json + pair.json +
     kvdb-bucket.txt + raw/*.txt and index/papers.json.
     """
-    cmd = [sys.executable, "src/index_papers.py"]
+    cmd = [sys.executable, "src-chemistry/index_papers.py"]
     if dry_run:
         # In dry-run we don't actually invoke index_papers.py -- we
         # just describe the command. The real run uses the default
@@ -134,7 +134,7 @@ def run_extract_questions(slug: str, dry_run: bool = False) -> int:
     old file intact. This call assumes you've already run
     index_papers.py and that papers/<slug>/raw/*.txt exists.
     """
-    cmd = [sys.executable, "src/extract_questions.py", slug]
+    cmd = [sys.executable, "src-chemistry/extract_questions.py", slug]
     if dry_run:
         _log(f"  [dry-run] would run: {' '.join(cmd)}")
         return 0

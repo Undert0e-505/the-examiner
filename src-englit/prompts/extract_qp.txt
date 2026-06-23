@@ -1,0 +1,41 @@
+You are extracting a structured question list from a UK GCSE exam paper (question paper, not mark scheme).
+
+Your output MUST be a single JSON object with this exact shape:
+
+{
+  "schema_version": 1,
+  "total_marks": <integer, from the cover page "total mark" line, or null if not found>,
+  "questions": [
+    {
+      "id": "q<n>" or "q<n>.<m>" (a stable, lowercase, dot-separated identifier — e.g. "q1", "q13", "q1.1", "q2.3". Use "q1" not "Question 1" for the id; the printed label goes in paper_question_number.),
+      "paper_question_number": <the question label as printed in the paper, e.g. "1", "Question 13", "0 1 .1". For AQA Chemistry the label is "0 1 .1" style with spaces around the parts. Preserve the exact printed form.>,
+      "section": <"Section A" / "Section B" / null. null if the paper has no sections.>,
+      "extract": <the verbatim text of any source extract, poem, or passage printed with the question. If the question is mathematical, scientific, or has no extract, use null. Do NOT include the prompt — only the extract/passage itself.>,
+      "prompt": <the verbatim text of the question being asked of the student — i.e. the instructions, the "Starting with this extract…" line, the "Work out 818.4 ÷ 1.2" line, the "0 1 .1 Complete the word equation…" line, etc. If the question has both an extract and a prompt, the extract goes in `extract` and only the actual instruction goes here.>,
+      "marks_available": <integer, the marks for this question as printed in "[N marks]" or "[Total for Question N is M marks]">,
+      "page_start": <1-indexed PDF page where this question begins>,
+      "page_end": <1-indexed PDF page where this question ends>
+    }
+  ]
+}
+
+Rules:
+- Output ONLY the JSON object, no commentary, no code fences, no preamble.
+- Question numbering varies by board:
+  * Edexcel: "1", "2", ..., "22" — single numbers in order.
+  * AQA: "0 1", "0 1 .1", "0 1 .2", "0 2", "0 2 .1" — the leading "0" is the question, the ".1" / ".2" are sub-parts. Each sub-part is a separate entry in the questions list.
+  * AQA English Literature: "Question 13", "Question 14", "Question 15" etc, in Section A or Section B.
+- Each question / sub-part is one entry in the `questions` array. Do not collapse sub-parts into the parent question.
+- The `id` field is a stable lowercase identifier: "q1", "q1.1", "q1.2", "q2", "q13" etc. It must match the order they appear in the paper and be unique.
+- `marks_available` for AQA sub-parts: each sub-part has its own "[N marks]" line. Read it.
+- `marks_available` for AQA English Lit: each question has one [N marks] line; AO4 marks (4 extra) are counted separately and you should NOT add them to marks_available for the question — they belong in markscheme.json as a separate criterion.
+- `extract` is the verbatim prose / poem / passage that the question is asking about. For "Starting with this extract" questions, copy the entire extract from the paper into `extract`, then put only the "Starting with…" prompt in `prompt`.
+- `page_start` / `page_end` are 1-indexed page numbers in the source PDF. The pages are listed in the input as "----- PAGE N -----" markers; use those N values.
+- If a question spans multiple pages, set `page_end` to the last page on which any text from that question appears.
+- Skip the cover page and any "Information" / "Instructions" pages. Only the actual questions count.
+- `total_marks` is the value on the cover page ("The total mark for this paper is 80" → 80, "The maximum mark for this paper is 100" → 100). If you cannot find it, use null.
+
+The text below has page markers ("----- PAGE N -----") so you can set page_start / page_end correctly. Pages may include OCR artefacts like extra whitespace, repeated headers, "DO NOT WRITE IN THIS AREA", and the page footer. Ignore those.
+
+PAPER TEXT:
+{body}

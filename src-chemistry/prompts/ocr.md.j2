@@ -1,8 +1,7 @@
-You are operating inside a disposable Codex sandbox at
-`{{ sandbox_dir }}`. The real repo is at `{{ real_repo }}`. The
-sandbox is a fresh copy of the real repo (via the codex_lane
-wrapper's `-UseCopy` mode) with the `origin` remote removed.
-**Do not touch the real repo.** All work happens inside the sandbox.
+You are operating inside the the-examiner repo at `{{ real_repo }}`.
+You are running in-place in the repo (not a sandbox copy). You can
+read and write files in the repo. **Only write the transcript files**
+— do not modify any other file.
 
 ## Task
 
@@ -159,7 +158,7 @@ Report in your final message (the one that goes to the wrapper's
 stdout, NOT to a file):
 - The paths of all {{ pages | length }} files you created, in order, with their
   line counts.
-- One sentence on whether you stayed inside the sandbox.
+- One sentence on whether you stayed inside the repo (only wrote transcript files).
 - One sentence on whether you made any network calls.
 - The first 5 lines of the highest-numbered transcript file (the
   last page), so the orchestrator can sanity-check the output

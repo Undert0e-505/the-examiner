@@ -1,0 +1,433 @@
+You are operating inside the the-examiner repo at `{{ real_repo }}`.
+You are running in-place in the repo (not a sandbox copy). You can
+read and write files in the repo. **Only write the marking files**
+— do not modify any other file.
+
+## Task
+
+You will mark the student's handwritten answers to the
+{{ markscheme_summary }}, producing per-criterion scores for all
+{{ total_marks }} marks of the paper.
+
+The marking process compares:
+1. The student's transcripts (OCR transcripts of their handwritten
+   answers, produced in a separate OCR pass — see the files listed
+   in "Transcripts" below).
+2. The markscheme criteria (extracted from the official mark
+   scheme, with per-criterion points and indicative content — see
+   `{{ markscheme_path }}`).
+
+…against each other, and awards marks per criterion. The
+indicative content lists *acceptable* answer points
+
+**Output format constraints (PARSER-CRITICAL):**
+
+The marking output is parsed by `src/publish.py:parse_criterion_block`
+to render the public feedback page. Format drift between the prompt
+example and the parser's regex has caused a silent regression where
+every criterion block was dropped and the page rendered "No
+per-criterion details available." instead of the per-criterion
+breakdown. To prevent that:
+
+- Use exactly TWO ASCII hyphens `--` (NOT em-dash `—`, NOT
+  en-dash `–`, NOT a single hyphen `-`) between the AO label
+  and the marks count in the criterion header. Em/en dashes look
+  similar in monospace but the parser does not match them.
+- Use exactly TWO ASCII hyphens `--` (same rule) in the
+  "Sub-question this criterion applies to" line.
+- Use plain ASCII in every header, field-name, and structural
+  line. Em-dashes are fine in the `Justification` text body
+  (the parser doesn't read it), but they must NOT appear in any
+  header line, any field-name line, or any "Decision:" /
+  "Marks awarded:" line.
+- Each criterion block must start with a literal `### Criterion`
+  header at the start of the line. No leading whitespace.
+- Each field within a block must start with `**Field:**` (the
+  bold-field-name colon pattern). Field names are case-sensitive
+  and must match exactly: `Sub-question this criterion applies
+  to:`, `Indicative content:`, `Transcript section covered:`,
+  `Decision:`, `Marks awarded:`, `Justification:`.
+
+The exact byte sequence for the criterion header is:
+
+```
+### Criterion 1: AO2 -- 1 mark(s)
+```
+
+If you write `### Criterion 1: AO2 — 1 mark(s)` (em-dash), the
+parser will silently drop the criterion and the student will see
+"per-criterion details" missing on their feedback page. **Do not
+do that.**
+ — the
+student's answer does not need to match word-for-word, but the
+correct content must be there.
+
+## Inputs (all in the repo)
+
+**Transcripts ({{ transcripts | length }} files, one per photographed page):**
+{%- for t in transcripts %}
+
+  `intake/{{ slug }}/{{ "%02d" | format(t) }}.transcript.md`
+{%- endfor %}
+{%- if gaps %}
+
+  Gaps at {{ gaps | join(', ') }} — those pages have no answer
+  spaces and no transcript was produced for them.
+{%- endif %}
+
+  Each transcript has a "Page identification" section that lists
+  the question numbers visible on the page, the total marks
+  available, and a short printed-context summary. This is your
+  primary index for which sub-questions are covered by which
+  transcript.
+
+**Markscheme (one file):**
+  `{{ markscheme_path }}`
+
+  Top-level shape: `{schema_version, marks: [...], slug, kind,
+  extracted_at_utc, extractor}`. The `marks` array has
+  {{ question_count }} entries (one per question group
+  Q1-Q{{ question_count }}), each with a `question_ref`
+  ("q1" through "q{{ question_count }}"), a `paper_question_number`
+  ("01" through "{{ "%02d" | format(question_count) }}"), a
+  `total_marks_for_question`, and a `criteria` array.
+
+  In total: **{{ criteria_count }} criteria across {{ question_count }}
+  questions, {{ total_marks }} marks.** Per-question:
+  {{ per_question }}.
+
+**Important — criteria do NOT have explicit sub-question IDs.**
+The markscheme was extracted by question-group (q1, q2, …, qN)
+without preserving the sub-question labels (q1.1, q1.2, q3.3, etc.).
+You will need to *infer* which sub-question each criterion applies
+to by reading the criterion's `indicative_content` and matching it
+against the question stems visible in the relevant transcript. The
+transcript's "Question numbers visible" line is the index for this
+mapping.
+
+## What to produce
+
+**{{ question_count }} marking files**, one per question group, with filenames:
+{%- for n in question_numbers %}
+
+  `assessments/{{ slug }}/Q{{ "%02d" | format(n) }}.marking.md`
+{%- endfor %}
+
+Plus one summary file:
+  `assessments/{{ slug }}/SUMMARY.md`
+
+**Write each Q-NN file IMMEDIATELY after producing it**, in
+the listed order (Q01 first, …, Q{{ "%02d" | format(question_count) }} last). The
+summary file goes last, after you have all {{ question_count }} Q-files done.
+
+### Per-question file shape
+
+Each `QNN.marking.md` file must contain these sections, in order.
+**Use the exact header shapes shown below** (`#### N. <Title>`)
+— the publish-time parser matches these specifically, and a
+different header level or unnumbered header will silently drop
+the section from the rendered page.
+
+#### 1. Question identification (3-5 lines)
+
+- Question number (e.g. "01", "08")
+- Total marks available (sum of `marks` for all criteria in this
+  question, from the markscheme)
+- The question sub-parts covered by the transcripts (e.g. "Q01.1,
+  Q01.2, Q01.3, Q01.4, Q01.5, Q01.6" or "Q08.3 only")
+- A short printed-context summary of the question (a one-sentence
+  summary of what the question asks — drawn from the transcripts
+  where this question is covered)
+
+#### 2. Per-criterion marking (one block per criterion)
+
+For EACH criterion in `markscheme.json#marks[QN].criteria`
+(where QN is q1, q2, …, q{{ question_count }}), produce a block with this shape:
+
+```
+### Criterion N: <ao> -- <marks> mark(s)
+**Sub-question this criterion applies to:** <qN.X -- your best
+guess based on the indicative content and the transcript>
+**Indicative content:** <bullet list from the markscheme>
+**Transcript section covered:** <which transcript file and
+which question header in it — or "not covered by any transcript"
+if the criterion is for a sub-question whose page is missing>
+**Decision:** AWARD | NOT_AWARD | NOT_APPLICABLE
+**Marks awarded:** <integer, 0 to marks available>
+**Justification:** <2-4 sentences. Quote the student's answer
+where relevant. The justification is STUDENT-FACING — it will
+appear on the public feedback page. Do NOT include assessor-only
+process notes here (e.g. "originally NOT_AWARD but re-OCR'd with
+graph-specific prompt and re-marked", "the OCR said no answer
+written on this page but the photo clearly shows..."). Those go
+in `assessor_notes` (see below), not here. The student only needs
+to see the substantive content: what the indicative content asks
+for, what the student wrote, and the gap (if any) between them.>
+**Assessor notes:** <OPTIONAL. 1-3 sentences of process notes for
+the assessor (Aaron) only — things that should NOT be on the
+public page. Examples: "Re-OCR'd on DATE with graph-specific
+prompt to recover drawn best-fit lines", "Originally NOT_AWARD
+based on first OCR transcript; upgraded after assessor
+re-checked page 10 against the photo", "Handwritten equation is
+visually ambiguous between 7X and 8X; awarded on the strict
+reading of the transcript". If there's nothing to flag, write
+"None." or omit the field.>
+```
+
+**Important — verbatim quoting in the Justification:** When you
+quote the student's answer, copy it from the transcript file
+**exactly** — including spelling mistakes, grammar errors, and
+arithmetic. Do not correct or paraphrase it. If the transcript
+has `[illegible]`, write `[illegible]` in the justification.
+
+**Important — process marks:** Many criteria in the markscheme
+have "allow" clauses (e.g. "allow correct use of incorrectly
+determined values of bonds broken and/or bonds made", "allow
+correct evaluation of the expression energy released = bonds
+broken − bonds made"). These are explicit. If a criterion has an
+"allow" clause, apply it: even if the student got an earlier
+step wrong, you can still award the later step *if the student
+correctly applied the process to the wrong value*. Read the
+transcript line by line and decide for each criterion whether
+the student's answer, given his setup, is internally consistent.
+
+**Important — coefficient and unit errors:** For calculation
+questions, look for the right variables. If the student wrote a
+different coefficient than the markscheme requires, the
+downstream algebra marks are NOT awarded because the algebra
+doesn't follow from the original setup. The "bonds made" and
+"bonds broken" process marks may still be available if the
+student's setup is internally consistent. Apply the markscheme
+strictly.
+
+**Important — IDK and empty answers:** Many answers are "IDK" /
+"Idk" / "Not covered yet" / left blank. For these answers, every
+criterion for that sub-question is NOT_AWARD with 0 marks and a
+one-line justification: "Student wrote 'IDK' / left blank — no
+content to assess against the indicative content." Do not
+speculate about what the student might have known.
+
+**Important — crossed-out answers:** The transcripts preserve
+crossed-out words with `(crossed out)` annotation. A crossed-out
+answer is NOT awarded (the student themselves invalidated it).
+A new answer written *above or after* the crossed-out one IS
+considered.
+
+**Important — diagram descriptions:** Some transcripts describe
+diagrams in structured form (e.g. "graph drawn with plotted
+points at..."). For markscheme criteria that award marks for
+correct graph features (best-fit line, points plotted, axes
+labelled), check the diagram description carefully. If the
+description says the student drew the line, award the mark; if
+it says the student left the graph blank, do not.
+
+**Important — not-applicable criteria:** Some criteria may
+apply to sub-questions whose pages are missing or that are simply
+not covered by any of the transcripts. Mark these as
+NOT_APPLICABLE with a one-line justification.
+
+#### 3. Legibility assessment (one block, 6 lines)
+
+This is a **risk signal**, not a re-grade. Per-question legibility
+captures how hard the handwriting was to read. The marking
+decisions above stand; this section asks: *could a tired but fair
+GCSE examiner have read this answer quickly enough to award the
+mark without heroic reconstruction?*
+
+For this question, write a `### Legibility` block with exactly
+these fields (use the literal `Field:` prefixes so the parser
+can find them):
+
+```
+### Legibility
+
+**legibility_score:** <integer 0-5>
+**ocr_mode:** <one of: clear_read | minor_uncertainty | context_inferred | unreadable>
+**reason:** <one short sentence, ~10-20 words, explaining what made this question easy or hard to read>
+**student_feedback:** <one short sentence, ~10-20 words, written directly to Will in second person ("Your handwriting...", "You wrote..."), giving specific actionable advice>
+```
+
+**legibility_score scale (anchor with the GC: would a tired
+GCSE examiner read this quickly without heroic reconstruction?):**
+- **5** = Clean print or fully legible joined-up writing; no
+  hesitation. A tired examiner reads it instantly.
+- **4** = Standard legible handwriting. A tired examiner reads
+  it without slowing down.
+- **3** = Readable but slow. A tired examiner has to pause on
+  one or two words, but reconstructs them without help.
+- **2** = Readable only because context fills the gap. A tired
+  examiner would not award the mark on the handwriting alone —
+  the markscheme or the surrounding answer had to do work.
+- **1** = Heroic reconstruction needed. The transcript had
+  `[illegible]` markers, or the examiner would have to guess
+  what was meant from partial letters.
+- **0** = Genuinely cannot read. Multiple words or the whole
+  answer are unreadable.
+
+**ocr_mode is derived from legibility_score:**
+- score 4-5 → `clear_read`
+- score 3 → `minor_uncertainty`
+- score 2 → `context_inferred`
+- score 0-1 → `unreadable`
+
+**Do NOT use `forensic_reconstruction` (or any other label)**
+— the four options above are the only valid values.
+
+**Do NOT modify the per-criterion marking based on legibility.**
+If the transcript says `[illegible]` and you NOT_AWARD a
+criterion because of it, note that in the criterion's
+justification (and in the Assessor notes section's "OCR
+blockers" list) — do NOT inflate the legibility score to make
+the marking look less risky. Legibility reflects the
+handwriting; marking reflects the markscheme. They are
+independent.
+
+**Do NOT inflate the score because the markscheme was
+forgiving.** A question where the student wrote one word and
+it happened to match the rubric still gets a low legibility
+score if that one word was hard to read.
+
+**student_feedback is written to Will, not about Will.** Use
+second person ("Your handwriting on the Q1.5 percentage-yield
+calculation was hard to read — the '92.8' looked like '92.0'
+at first glance. Print your key numbers more clearly."),
+not third person ("The student would benefit from..."). Be
+specific: name the question, the kind of error, and the
+fix. Skip the praise; Will doesn't need it. One short
+sentence is enough.
+
+#### 4. Question summary (2-3 lines)
+
+- **Total marks awarded for this question:** `<sum of marks
+  awarded for all criteria, integer>` out of `<total marks for
+  this question>`.
+- **One sentence on what cost the most marks** (e.g. "Student got
+  4/8 on Q1, with 3 marks lost on the percentage-yield calculation
+  where they did not set up the equation correctly").
+- **Legibility summary (one short sentence):** e.g. "Question
+  was generally legible (score 4/5); the calculation on Q1.5
+  was the only slow spot."
+
+### Summary file shape
+
+The `SUMMARY.md` file must contain, in order. **Use the exact
+header shapes shown below** (`#### N. <Title>`) — the
+publish-time parser matches these specifically, and a different
+header level or unnumbered header will silently drop the
+section from the rendered page. Specifically, the four section
+headers MUST be exactly:
+
+```
+#### 1. Paper header
+#### 2. Per-question tally table
+#### 3. Cross-paper observations
+#### 4. Assessor notes
+```
+
+Lower-case, unnumbered, hyphenated ("## Cross-paper
+observations"), or differently-cased variants will be silently
+dropped. The "Cross-paper observations" section is student-
+facing; the "Assessor notes" section is assessor-only and is
+not surfaced on the public page.
+
+#### 1. Paper header (3-4 lines)
+
+- Paper code
+- Sitting
+- Total marks available ({{ total_marks }})
+- Total marks awarded (`<sum across all {{ question_count }} Q-NN.marking.md files, integer>`)
+
+#### 2. Per-question tally table (one row per Q)
+
+A markdown table with columns: `Question | Marks available | Marks
+awarded | Notes`. One row per Q1-Q{{ question_count }}. Notes column is a
+one-sentence summary of the question's marking (e.g. "Strong on the
+conceptual prose, lost marks on calculations").
+
+#### 3. Cross-paper observations (3-5 short paragraphs, STUDENT-FACING)
+
+A few short paragraphs (each 2-4 sentences) on cross-cutting
+patterns you noticed while marking. The student reads this on the
+public page, so write it in second person ("You did better on…")
+and keep it substantive. Patterns to cover:
+
+- **Calculation vs prose:** Did the student do better on prose
+  answers (where they could express a concept in their own words)
+  or on calculations (where the markscheme has specific numerical
+  answers)? Give specific examples.
+- **Pattern of "IDK" answers:** How many sub-questions did the
+  student skip or write "IDK" on? Were they clustered in any
+  topic? (E.g. "You wrote IDK on 3 of 5 calculation questions in
+  Q4, but attempted all the prose questions in Q5.")
+
+#### 4. Assessor notes (assessor-only; not on the public page)
+
+The following paragraphs are pipeline meta. They describe the OCR +
+marking chain's behaviour, not the student's work. They live in
+this section so the assessor (Aaron) can audit a marking pass, but
+they are NOT surfaced on the rendered feedback page.
+
+- **OCR blockers / human review list:** If you had to NOT_AWARD a
+  criterion because the transcript said `[illegible]` or had low
+  confidence, list the affected questions here. This is the "human
+  review" list — these are the marks that should be re-checked
+  against the original photos by a human. Cross-reference each
+  entry with the question's `legibility_score` and `ocr_mode`
+  (e.g. "Q07.2 (legibility_score=1, ocr_mode=unreadable): the
+  one word after 'different sized' is illegible; recheck the
+  photo").
+- **Legibility overview:** A 1-2 sentence summary of legibility
+  across the paper (e.g. "Q3 was the cleanest (5/5); Q7 had
+  the most illegible spots (3/5 average, 1/5 on Q7.2)."). This
+  is a rollup — the per-Q scores are in the Q-NN files.
+- **Marking uncertainty:** Criteria where you had to NOT_AWARD with
+  a justification like "could go either way" or "the transcript is
+  ambiguous" go here. These are the marks the *marking model* is
+  uncertain about, even when the transcript is clear.
+- **Pipeline verdict:** Did the OCR + markscheme chain produce
+  marks you would defend to a real GCSE marker? (yes / mostly /
+  no). What would improve the marking fidelity? (e.g. "human
+  review on the 5 calculation pages where the OCR flagged
+  `[illegible]`", "second-pass OCR on the harder pages", "use a
+  chemistry-domain model instead of a general one"). One sentence
+  on whether this batch pipeline is ready to be run on the next
+  paper with minimal changes.
+
+## Hard rules
+
+- **Do not commit.** Do not push. Do not `git add` anything.
+- **Do not run any network command.** No curl, no pip install, no
+  git fetch, no `codex login`, nothing.
+- **Do not modify any file outside the {{ question_count + 1 }} output
+  files** ({{ question_count }} Q-NN.marking.md + 1 SUMMARY.md). Specifically:
+  - Do not edit the transcript files.
+  - Do not edit the markscheme file.
+  - Do not edit any other file in the repo.
+- **Do not invent markscheme criteria.** Apply only the criteria
+  that exist in `markscheme.json#marks[*].criteria[*]`. There are
+  exactly {{ criteria_count }} criteria across {{ question_count }}
+  questions; do not add more.
+- **Do not give the student the benefit of the doubt on the
+  basis of "what they probably meant".** If the student's algebra
+  uses a different coefficient than the rubric, that is a missing
+  mark. Quote the rubric.
+- **Do not re-grade the markscheme.** Apply it as written. If you
+  think a criterion is unfair, note that in the Assessor notes
+  section, but do not change the mark.
+- **If you cannot do this task for any reason**, write `BLOCKED` at
+  the top of EACH marking file you have not yet completed, and
+  explain in one paragraph why. Do not silently fall back to a
+  half-done marking.
+
+## After completing
+
+Report in your final message (the one that goes to the wrapper's
+stdout, NOT to a file):
+- The paths of all {{ question_count + 1 }} output files, in order, with their
+  line counts.
+- One sentence on whether you stayed inside the repo (only wrote marking files).
+- One sentence on whether you made any network calls.
+- The total marks awarded across all {{ question_count }} questions (e.g.
+  "47/100").
+- The first 5 lines of SUMMARY.md, so the orchestrator can sanity-check
+  the output without opening the file.
