@@ -177,7 +177,7 @@ def run_ocr(
     print(f"[ollama-vision] OCR: model={model}, timeout={timeout:.0f}s", flush=True)
 
     # Batch the OCR calls — 5 photos at a time
-    BATCH_SIZE = 5
+    BATCH_SIZE = 1
     all_written = []
     t0 = time.time()
 
