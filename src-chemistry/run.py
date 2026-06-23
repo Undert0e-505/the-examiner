@@ -410,19 +410,39 @@ def wait_for_photos(
             )
         return batch_photos
 
-    # Count-given path: wait until cache has at least N photos,
-    # then return the latest N. This path does NOT need the
-    # last-batch marker because the user gave an explicit count.
-    deadline = time.time() + timeout_sec
+    # Count-given path: wait until at least N photos have arrived
+    # AFTER the last-batch marker (or after this function was called
+    # if no marker exists), then return those N. This prevents picking
+    # up stale photos from previous runs when the cache hasn't been
+    # cleared.
+    start_mtime = time.time()
+    marker_mtime = _read_last_batch_marker()
+    cutoff = max(marker_mtime or 0, start_mtime - recent_window_sec)
+    deadline = start_mtime + timeout_sec
     last_n = -1
     while time.time() < deadline:
-        all_photos = _list_all()
-        n = len(all_photos)
+        batch_photos = _list_after(cutoff)
+        n = len(batch_photos)
         if n != last_n:
-            print(f"  wait_for_photos: cache has {n} photos (waiting for {count})", flush=True)
+            total = len(_list_all())
+            print(f"  wait_for_photos: {n} new photos since /mark (cache has {total} total, waiting for {count})", flush=True)
             last_n = n
         if n >= count:
-            return all_photos[-count:]
+            return batch_photos[-count:]
+        time.sleep(poll_interval_sec)
+    # Timed out. Return what we have.
+    batch_photos = _list_after(cutoff)
+    if not batch_photos:
+        raise FileNotFoundError(
+            f"timed out after {timeout_sec}s waiting for {count} new photos; "
+            f"got 0. The Telegram batch may not have arrived."
+        )
+    print(
+        f"  wait_for_photos: timed out after {timeout_sec}s, "
+        f"got {len(batch_photos)}/{count} new photos",
+        flush=True,
+    )
+    return batch_photos[-count:]
         time.sleep(poll_interval_sec)
     # Timed out. Return what we have.
     all_photos = _list_all()
