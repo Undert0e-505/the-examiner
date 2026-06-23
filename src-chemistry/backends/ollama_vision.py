@@ -117,8 +117,17 @@ headers. Conventions:
 - For empty answer spaces: write `(no answer written)`.
 - For crossed-out words: write the original word followed by `(crossed out)`.
 - For diagrams: describe in 1-2 sentences in brackets.
-- For graphs: report number of plotted points, approximate coordinates,
-  equation and shape of any drawn line, and coordinates of any intersection.
+- For graphs: CAREFULLY look for any student-drawn lines, curves, or markings
+  on pre-printed graphs. Students often draw lines of best fit, extension lines,
+  or curves in pencil that may be faint. Report:
+  * Number of plotted points and approximate coordinates
+  * Any lines drawn by the student (describe: straight/curved, through which points,
+    approximate angle or slope)
+  * Any intersections between student-drawn lines
+  * Any labels, arrows, or annotations added by the student
+  If the student drew lines on a printed graph, describe them. Do NOT say
+  "no answer written" if there are pencil marks on a graph — describe what
+  was drawn. Use [faint] if lines are hard to see.
 
 After the verbatim transcript, add: `*Reading note:* <confidence description>`
 
