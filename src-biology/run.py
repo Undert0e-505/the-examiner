@@ -417,7 +417,7 @@ def wait_for_photos(
     # cleared.
     start_mtime = time.time()
     marker_mtime = _read_last_batch_marker()
-    cutoff = max(marker_mtime or 0, start_mtime - recent_window_sec)
+    cutoff = marker_mtime if marker_mtime is not None else (start_mtime - 7200)  # 2hr window when no marker
     deadline = start_mtime + timeout_sec
     last_n = -1
     while time.time() < deadline:
