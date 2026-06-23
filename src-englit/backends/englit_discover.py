@@ -223,7 +223,7 @@ def ocr_and_match(
 
     print(f"[englit-discover] OCR + matching {n} answer pages...", flush=True)
     t0 = time.time()
-    result = chat_json_with_images(
+    raw_response = chat_with_images(
         user_text,
         answer_photo_paths,
         system=MATCH_SYSTEM,
@@ -233,6 +233,23 @@ def ocr_and_match(
     )
     elapsed = time.time() - t0
     print(f"[englit-discover] OCR + matching done in {elapsed:.1f}s", flush=True)
+
+    # Parse JSON from response (may have code fences)
+    text = raw_response.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text, flags=re.IGNORECASE | re.DOTALL).strip()
+    try:
+        result = json.loads(text)
+    except ValueError:
+        # Fallback: try to extract JSON object
+        m = re.search(r"\{[\s\S]*\}", text)
+        if m:
+            try:
+                result = json.loads(m.group(0))
+            except ValueError:
+                raise RuntimeError(f"Could not parse JSON from response: {text[:500]}")
+        else:
+            raise RuntimeError(f"Could not parse JSON from response: {text[:500]}")
 
     # Map photo indices back to the original indexing
     answers = result.get("answers", [])

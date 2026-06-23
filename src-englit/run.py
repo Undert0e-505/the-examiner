@@ -97,6 +97,7 @@ import send_email
 from generate_prompts import write_prompt_to_spec_path
 from backends import ollama_vision
 from backends import englit_discover
+from backends import englit_marking
 
 REPO_ROOT = publish.REPO_ROOT  # D:/dev/the-examiner
 GATEWAY_CACHE = Path("C:/Users/openclaw-agent/.openclaw/media/inbound")
@@ -537,7 +538,7 @@ def auto_discover(
             flush=True,
         )
 
-    # Load question prompts from paper.json
+    # Load question prompts from paper.json (compact: just the prompt, no extracts)
     paper_json_path = REPO_ROOT / "papers" / discovered_slug / "paper.json"
     question_prompts = {}
     if paper_json_path.is_file():
@@ -545,11 +546,8 @@ def auto_discover(
         for q in pj.get("questions", []):
             qref = q.get("id", q.get("question_ref", ""))
             prompt_text = q.get("prompt", "")
-            extract_text = q.get("extract", "")
-            full_prompt = prompt_text
-            if extract_text:
-                full_prompt = f"Extract:\n{extract_text}\n\nPrompt:\n{prompt_text}"
-            question_prompts[qref] = full_prompt
+            # Just the prompt, no extract — keeps the match prompt small
+            question_prompts[qref] = prompt_text
 
     # Step 2: OCR answer pages and match to questions
     photo_cls = classification.get("photo_classifications", {})
@@ -626,6 +624,7 @@ def auto_discover(
         "questions_to_answer": discovery.get("questions_to_answer"),
         "answered_questions": discovery.get("answered_questions", []),
         "photo_classifications": photo_cls,
+        "match_result": match_result,
         "confidence": discovery.get("confidence", "low"),
     }
 
@@ -867,6 +866,8 @@ def run_pipeline(
         else:
             try:
                 discovery = auto_discover(slug, photos_hint, engine=engine)
+                answered_questions = discovery.get("answered_questions", [])
+                match_result = discovery.get("match_result", {"answers": []})
             except ValueError as e:
                 # Paper not in repo, or photos hint too small, etc.
                 print(f"  discovery failed: {e}", flush=True)
@@ -893,6 +894,12 @@ def run_pipeline(
                 "confidence": discovery["confidence"],
             }
             _log_step_done("1/8", "auto-discover", t0)
+
+    # Ensure answered_questions and match_result are available
+    if 'answered_questions' not in dir():
+        answered_questions = []
+    if 'match_result' not in dir():
+        match_result = {"answers": []}
 
     if not skip_codex:
         if not photo_paths:
@@ -936,76 +943,46 @@ def run_pipeline(
     _log_step_done("2/8", "markscheme_check", t0)
 
     if not skip_codex:
-        # Step 2: stage photos
+        # Step 2: write transcripts from discovery (OCR already done during discovery)
         print("=" * 60, flush=True)
-        print(f"Step 3/8: stage {len(photo_paths)} photos to intake/{slug}/", flush=True)
+        print(f"Step 3/8: write transcripts for {slug}", flush=True)
         print("=" * 60, flush=True)
-        _log_step_start("3/8", "stage+ocr")
+        _log_step_start("3/8", "ocr")
         t0 = time.time()
         if not dry_run:
-            if engine == "ollama":
-                # Ollama vision path - no Codex
-                page_numbers = page_order if page_order is not None else list(range(1, len(photo_paths) + 1))
-                ocr = ollama_vision.run_ocr(
-                    slug=slug,
-                    page_numbers=page_numbers,
-                    skip_staging=auto_discover_mode,
-                )
-            else:
-                ocr = ocr_batch.run_ocr(
-                    slug=slug,
-                    job_name=f"ocr-{slug}",
-                    photo_paths=photo_paths,
-                    page_order=page_order,
-                    page_contexts=None,
-                    batch_id=None,
-                    yes=True,
-                    skip_copy_back=False,
-                    skip_staging=auto_discover_mode,
-                )
-            if ocr["codex_returncode"] != 0:
-                err_tail = ocr.get("codex_err_tail", "").strip()
-                # Surface the actual reason in the log. If the err log
-                # is empty, fall back to the raw exit code; the operator
-                # can dig into the sandbox .codex_run/ dir for more.
-                if err_tail:
-                    summary["stages"]["ocr"] = f"codex exit {ocr['codex_returncode']}; abort. Codex stderr tail:\n{err_tail}"
-                else:
-                    summary["stages"]["ocr"] = f"codex exit {ocr['codex_returncode']}; abort"
+            # The discovery step already OCR'd the answer pages.
+            # Write the transcripts to disk.
+            written = englit_marking.write_transcripts_from_discovery(slug, match_result)
+            if not written:
+                summary["stages"]["ocr"] = "failed: no transcripts from discovery"
                 summary["aborted"] = True
-                _log_step_done("3/8", "stage+ocr (failed)", t0)
+                _log_step_done("3/8", "ocr (failed)", t0)
                 return summary
             summary["stages"]["ocr"] = "ok"
-            summary["transcripts"] = [str(p) for p in (ocr["transcripts_copied_back"] or [])]
-            _log_step_done("3/8", "stage+ocr", t0)
+            summary["transcripts"] = [str(p) for p in written]
+            _log_step_done("3/8", "ocr", t0)
         else:
-            print(f"  [dry-run] Would stage {len(photo_paths)} photos and call codex_lane", flush=True)
+            print(f"  [dry-run] Would write discovery transcripts", flush=True)
             summary["stages"]["ocr"] = "dry-run"
-            _log_step_done("3/8", "stage+ocr (dry-run)", t0)
+            _log_step_done("3/8", "ocr (dry-run)", t0)
 
-        # Step 3: marking pass
+        # Step 3: marking pass (englit-specific, only answered questions)
         print("=" * 60, flush=True)
         print(f"Step 4/8: marking pass for {slug}", flush=True)
         print("=" * 60, flush=True)
         _log_step_start("4/8", "marking")
         t0 = time.time()
         if not dry_run:
-            if engine == "ollama":
-                # Ollama vision path - no Codex
-                mark = ollama_vision.run_marking(slug=slug)
-            else:
-                mark = mark_batch.run_marking(
-                    slug=slug,
-                    job_name=f"mark-{slug}",
-                    yes=True,
-                    skip_copy_back=False,
-                )
+            mark = englit_marking.run_marking(
+                slug=slug,
+                answered_questions=answered_questions,
+            )
             if mark["codex_returncode"] != 0:
                 err_tail = mark.get("codex_err_tail", "").strip()
                 if err_tail:
-                    summary["stages"]["marking"] = f"codex exit {mark['codex_returncode']}; abort. Codex stderr tail:\n{err_tail}"
+                    summary["stages"]["marking"] = f"failed: {err_tail}"
                 else:
-                    summary["stages"]["marking"] = f"codex exit {mark['codex_returncode']}; abort"
+                    summary["stages"]["marking"] = "failed"
                 summary["aborted"] = True
                 _log_step_done("4/8", "marking (failed)", t0)
                 return summary
@@ -1014,7 +991,7 @@ def run_pipeline(
             summary["tally"] = mark.get("tally")
             _log_step_done("4/8", "marking", t0)
         else:
-            print(f"  [dry-run] Would call codex_lane for marking", flush=True)
+            print(f"  [dry-run] Would mark answered questions", flush=True)
             summary["stages"]["marking"] = "dry-run"
             _log_step_done("4/8", "marking (dry-run)", t0)
     else:
