@@ -229,6 +229,49 @@ def run_ocr(
     elapsed = time.time() - t0
     print(f"[ollama-vision] OCR: all batches done in {elapsed:.1f}s, {len(all_written)} transcripts", flush=True)
 
+    # Retry missing pages — the model sometimes skips pages within a batch.
+    # Check which expected page numbers don't have transcripts and re-run
+    # OCR for just those photos, one at a time.
+    written_pages = set()
+    for w in all_written:
+        try:
+            written_pages.add(int(w.stem))
+        except ValueError:
+            pass
+    missing_pages = [p for p in page_numbers if p not in written_pages]
+    if missing_pages:
+        print(f"[ollama-vision] OCR: {len(missing_pages)} missing transcripts, retrying individually: {missing_pages}", flush=True)
+        for page_num in missing_pages:
+            # Find the photo for this page number
+            idx = page_numbers.index(page_num)
+            if idx >= len(photos):
+                continue
+            photo = photos[idx]
+            retry_user_text = OCR_USER_PREAMBLE.format(n=1, page_num=[page_num])
+            rt0 = time.time()
+            try:
+                retry_response = chat_with_images(
+                    retry_user_text,
+                    [photo],
+                    system=OCR_SYSTEM,
+                    model=model,
+                    base_url=base_url,
+                    timeout=timeout,
+                )
+                retry_transcripts = parse_ocr_response(retry_response, [page_num])
+                if retry_transcripts:
+                    for pn, content in retry_transcripts.items():
+                        out_path = intake_dir / f"{pn:02d}.transcript.md"
+                        out_path.write_text(content, encoding="utf-8")
+                        all_written.append(out_path)
+                        print(f"[ollama-vision] OCR: retry wrote {out_path.name} ({len(content)} chars) in {time.time()-rt0:.1f}s", flush=True)
+                else:
+                    print(f"[ollama-vision] OCR: retry FAILED for page {page_num} (no parseable sections, response: {retry_response[:200]})", flush=True)
+            except Exception as e:
+                print(f"[ollama-vision] OCR: retry FAILED for page {page_num}: {e}", flush=True)
+        elapsed = time.time() - t0
+        print(f"[ollama-vision] OCR: retries complete, {len(all_written)} total transcripts ({elapsed:.1f}s)", flush=True)
+
     if not all_written:
         return {
             "intake_dir": intake_dir,
