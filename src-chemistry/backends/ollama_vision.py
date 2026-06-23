@@ -176,7 +176,7 @@ def run_ocr(
             f"Intake dir not found at {intake_dir}. Stage photos first."
         )
 
-    photos = sorted(intake_dir.glob("*.jpg"))
+    photos = sorted(intake_dir.glob("*.jpg"), key=lambda p: int(p.stem) if p.stem.isdigit() else 0)
     if not photos:
         raise FileNotFoundError(
             f"No .jpg files in {intake_dir}. Stage photos first."
