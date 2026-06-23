@@ -96,6 +96,7 @@ import publish
 import send_email
 from generate_prompts import write_prompt_to_spec_path
 from backends import ollama_vision
+from backends import englit_discover
 
 REPO_ROOT = publish.REPO_ROOT  # D:/dev/the-examiner
 GATEWAY_CACHE = Path("C:/Users/openclaw-agent/.openclaw/media/inbound")
@@ -450,48 +451,28 @@ def auto_discover(
     photos_hint: int | None,
     engine: str = "ollama",
 ) -> dict:
-    """Run the discovery pass: wait for the latest N photos to
-    land in the cache, run the chosen engine (Codex default, or
-    Ollama opt-in) to identify the paper + page order, rename
-    the photos in the real repo's intake/<slug>/, and return the
-    discovered slug + page_order.
+    """Run the englit discovery pass.
 
-    `photos_hint` is the user-supplied count (e.g. 26 from
-    "/mark 26 pages"). We use it as a WAIT TARGET, not a hard
-    requirement: we poll the gateway cache until at least that
-    many photos have arrived, OR a 90s timeout fires (whichever
-    is first). If the timeout fires with fewer photos, we
-    proceed with what we have and warn the user.
+    Fundamentally different from chemistry:
+    - Classifies photos as cover / question_page / answer_page
+    - Reads the cover to get paper code, total marks, answer requirements
+    - OCRs answer pages and matches each to a question by content
+    - Stages photos into intake/<slug>/ with Q-based naming
 
-    This is the fix for the 2026-06-15 chat where Aaron sent
-    "/mark 26 pages" while the photos were still uploading.
-    Previously, the orchestrator saw only 10 of 26 photos
-    initially and asked the user for a slug (which it should
-    have been able to discover from the photos). Now it waits.
-
-    Returns a dict with the same shape as the run_pipeline result
-    field for a discovered batch:
+    Returns:
         {
           "slug": str,
-          "page_order": list[int],
           "cover_paper_code": str,
           "cover_text": str,
+          "total_marks": int | None,
+          "questions_to_answer": int | None,
+          "answered_questions": list[str],
+          "photo_classifications": dict,
           "confidence": str,
         }
-
-    Raises ValueError if the discovery result doesn't match a
-    known paper, or if no photos are available.
     """
-    import discover_batch as db
     cache_dir = GATEWAY_CACHE
     photo_paths = wait_for_photos(photos_hint, cache_dir)
-    # Mark the batch as started ONLY after we have a non-empty
-    # photo set. Otherwise a failed wait poisons the marker for
-    # the next run (the marker would be "now", and all photos
-    # already in the cache would be filtered as old). The marker
-    # is for "find photos that arrived after this run started";
-    # if the run didn't start successfully, no marker should
-    # be written.
     if not photo_paths:
         raise FileNotFoundError(
             f"auto_discover: no photos in {cache_dir}. "
@@ -502,19 +483,45 @@ def auto_discover(
     if photos_hint is not None and len(photo_paths) < photos_hint:
         print(
             f"  NOTE: hint was {photos_hint} photos, got {len(photo_paths)}. "
-            f"Proceeding with what arrived; the discovery pass will see a "
-            f"shorter stack than expected.",
+            f"Proceeding with what arrived.",
             flush=True,
         )
 
-    job_name = f"discover-{int(time.time())}"
-    result = db.discover_batch(
-        photo_paths=photo_paths,
-        job_name=job_name,
-        yes=True,
-        engine=engine,
-    )
-    discovered_slug = result["slug"]
+    # Step 1: Classify all photos
+    classification = englit_discover.classify_photos(photo_paths)
+
+    cover_code = classification.get("cover_paper_code", "unknown")
+    # Derive slug from paper code
+    code_norm = cover_code.replace("/", "").replace("\\", "").replace(" ", "-").lower()
+    # Try to match against known papers
+    papers_dir = REPO_ROOT / "papers"
+    discovered_slug = None
+    if papers_dir.is_dir():
+        for p in papers_dir.iterdir():
+            if p.is_dir():
+                paper_json = p / "paper.json"
+                if paper_json.is_file():
+                    try:
+                        pj = json.loads(paper_json.read_text(encoding="utf-8"))
+                        if pj.get("paper_code", "").replace("/", "").lower().replace(" ", "-") == code_norm:
+                            discovered_slug = p.name
+                            break
+                    except (json.JSONDecodeError, KeyError):
+                        pass
+    # Fallback: try the code as-is
+    if not discovered_slug:
+        # Map common AQA codes to known slugs
+        code_map = {
+            "8702/1H": "aqa-87021-english-literature-2024-05",
+            "8702/2H": "aqa-87022-english-literature-2024-05",
+        }
+        discovered_slug = code_map.get(cover_code)
+    if not discovered_slug:
+        raise ValueError(
+            f"Could not derive slug from paper code {cover_code!r}. "
+            f"Known papers: {sorted(p.name for p in papers_dir.iterdir() if p.is_dir())}"
+        )
+
     if slug is not None and slug != discovered_slug:
         print(
             f"WARN: trigger said slug={slug!r} but discovery found "
@@ -522,45 +529,96 @@ def auto_discover(
             flush=True,
         )
 
-    # Clear any pre-existing photos in the destination before
-    # restaging. Auto-discover is a redo from scratch; the safety
-    # rail in restage_real_repo_after_discovery would otherwise
-    # abort with FileExistsError. The discovered_slug is the
-    # orchestrator's source of truth (Codex read the cover), not
-    # any pre-existing filename.
+    # Load question prompts from paper.json
+    paper_json_path = REPO_ROOT / "papers" / discovered_slug / "paper.json"
+    question_prompts = {}
+    if paper_json_path.is_file():
+        pj = json.loads(paper_json_path.read_text(encoding="utf-8"))
+        for q in pj.get("questions", []):
+            qref = q.get("id", q.get("question_ref", ""))
+            prompt_text = q.get("prompt", "")
+            extract_text = q.get("extract", "")
+            full_prompt = prompt_text
+            if extract_text:
+                full_prompt = f"Extract:\n{extract_text}\n\nPrompt:\n{prompt_text}"
+            question_prompts[qref] = full_prompt
+
+    # Step 2: OCR answer pages and match to questions
+    photo_cls = classification.get("photo_classifications", {})
+    answer_indices = []
+    answer_paths = []
+    for idx_str, cls in photo_cls.items():
+        if cls.get("type") == "answer_page":
+            idx = int(idx_str) - 1
+            if 0 <= idx < len(photo_paths):
+                answer_indices.append(int(idx_str))
+                answer_paths.append(photo_paths[idx])
+
+    match_result = {"answers": []}
+    if answer_paths:
+        match_result = englit_discover.ocr_and_match(
+            answer_paths,
+            answer_indices,
+            paper_code=cover_code,
+            total_marks=classification.get("total_marks"),
+            questions_to_answer=classification.get("questions_to_answer"),
+            question_prompts=question_prompts,
+        )
+
+    # Step 3: Build discovery + stage photos
+    discovery = englit_discover.build_discovery(classification, match_result, photo_paths)
+
+    # Stage photos into intake/<slug>/ with Q-based naming
     dest_dir = REPO_ROOT / "intake" / discovered_slug
     if dest_dir.exists():
-        existing_jpgs = sorted(dest_dir.glob("*.jpg"))
-        if existing_jpgs:
-            for old in existing_jpgs:
-                old.unlink()
-            print(
-                f"  Cleared {len(existing_jpgs)} pre-existing .jpg from "
-                f"intake/{discovered_slug}/ before restage",
-                flush=True,
-            )
+        for old in dest_dir.glob("*"):
+            old.unlink()
+        print(f"  Cleared pre-existing files from intake/{discovered_slug}/", flush=True)
+    dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Rename the staged photos from intake/_discover/<job>/ to
-    # intake/<slug>/<page>.jpg in the REAL repo. The OCR pass
-    # will then run with --skip-staging=True.
-    new_paths = db.restage_real_repo_after_discovery(
-        job_name=job_name,
-        slug=discovered_slug,
-        page_numbers_by_index=result["page_numbers"],
-    )
-    print(f"Restaged {len(new_paths)} photos into intake/{discovered_slug}/", flush=True)
+    n = len(photo_paths)
+    for idx_str, cls in photo_cls.items():
+        idx = int(idx_str) - 1
+        if idx < 0 or idx >= n:
+            continue
+        src = photo_paths[idx]
+        ptype = cls.get("type", "unknown")
+        if ptype == "cover":
+            dest_name = "cover.jpg"
+        elif ptype == "question_page":
+            qrefs = cls.get("question_refs", [])
+            if qrefs:
+                dest_name = f"question-{qrefs[0]}.jpg"
+            else:
+                dest_name = f"question-unknown-{idx_str}.jpg"
+        elif ptype == "answer_page":
+            mq = cls.get("matched_question")
+            # Count how many answers for this question we have already
+            existing = list(dest_dir.glob(f"answer-{mq}-*.jpg")) if mq else []
+            seq = len(existing) + 1
+            if mq:
+                dest_name = f"answer-{mq}-{seq:02d}.jpg"
+            else:
+                dest_name = f"answer-unmatched-{idx_str}.jpg"
+        else:
+            dest_name = f"photo-{idx_str}.jpg"
+        dest = dest_dir / dest_name
+        # Handle name collisions
+        if dest.exists():
+            dest = dest_dir / f"{dest.stem}-{idx_str}{dest.suffix}"
+        dest.write_bytes(src.read_bytes())
 
-    # Cleanup the temporary discovery intake.
-    db.cleanup_discovery_intake(job_name)
+    print(f"  Staged photos into intake/{discovered_slug}/", flush=True)
 
     return {
         "slug": discovered_slug,
-        "page_order": result["page_order"],
-        "cover_paper_code": result["cover_paper_code"],
-        "cover_text": result["cover_text"],
-        "confidence": result["confidence"],
-        "photo_count": len(new_paths),
-        "page_numbers": result["page_numbers"],
+        "cover_paper_code": discovery.get("cover_paper_code", "unknown"),
+        "cover_text": discovery.get("cover_text", ""),
+        "total_marks": discovery.get("total_marks"),
+        "questions_to_answer": discovery.get("questions_to_answer"),
+        "answered_questions": discovery.get("answered_questions", []),
+        "photo_classifications": photo_cls,
+        "confidence": discovery.get("confidence", "low"),
     }
 
 
@@ -808,47 +866,22 @@ def run_pipeline(
                 summary["aborted"] = True
                 return summary
             slug = discovery["slug"]
-            # After auto_discover, the photos are correctly named
-            # at intake/<slug>/<page>.jpg in the real repo. The
-            # OCR pass will use --skip-staging=True to read them
-            # from there.
-            # Build page_order parallel to photo_paths (one entry
-            # per photo). The cover photo (file_index 1) is always
-            # treated as page 1; other photos use the discovered
-            # page number. For photos with unknown page numbers,
-            # the orchestrator aborts and asks the user to fix the
-            # intake folder by hand.
-            page_numbers = discovery["page_numbers"]
+            # After auto_discover, photos are staged in intake/<slug>/
+            # with Q-based naming: cover.jpg, question-q1.jpg,
+            # answer-q1-01.jpg, etc.
             intake_dir = REPO_ROOT / "intake" / slug
             photo_paths = sorted(intake_dir.glob("*.jpg"))
-            page_order = []
-            unknown_indices = []
-            for idx in sorted(page_numbers.keys()):
-                p = page_numbers.get(idx)
-                if p is None and idx == 1:
-                    p = 1  # Cover defaults to page 1
-                if p is None:
-                    unknown_indices.append(idx)
-                page_order.append(p)
-            while len(page_order) < len(photo_paths):
-                page_order.append(None)
-                unknown_indices.append(len(page_order))
-            if unknown_indices:
-                raise ValueError(
-                    f"Discovery could not determine the printed page number "
-                    f"for {len(unknown_indices)} photo(s) at file index(es) "
-                    f"{unknown_indices}. The orchestrator refuses to guess; "
-                    f"fix the intake folder by hand (rename "
-                    f"intake/{slug}/unknown-NN.jpg to NN.jpg where NN is "
-                    f"the printed page number) and re-trigger /mark."
-                )
+            answered_questions = discovery.get("answered_questions", [])
             print(f"  discovered slug={slug}, {len(photo_paths)} photos, "
-                  f"page_order={page_order}", flush=True)
+                  f"answered_questions={answered_questions}", flush=True)
             summary["stages"]["auto_discover"] = "ok"
             summary["discovered"] = {
                 "slug": slug,
                 "cover_paper_code": discovery["cover_paper_code"],
                 "cover_text": discovery["cover_text"],
+                "total_marks": discovery.get("total_marks"),
+                "questions_to_answer": discovery.get("questions_to_answer"),
+                "answered_questions": answered_questions,
                 "confidence": discovery["confidence"],
             }
             _log_step_done("1/8", "auto-discover", t0)
