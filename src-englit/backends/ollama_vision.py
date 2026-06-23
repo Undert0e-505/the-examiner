@@ -234,10 +234,12 @@ def run_ocr(
     # OCR for just those photos, one at a time.
     written_pages = set()
     for w in all_written:
-        try:
-            written_pages.add(int(w.stem))
-        except ValueError:
-            pass
+        # Filenames are NN.transcript.md — extract the leading integer
+        name = w.name
+        import re as _re
+        m = _re.match(r"(\d+)", name)
+        if m:
+            written_pages.add(int(m.group(1)))
     missing_pages = [p for p in page_numbers if p not in written_pages]
     if missing_pages:
         print(f"[ollama-vision] OCR: {len(missing_pages)} missing transcripts, retrying individually: {missing_pages}", flush=True)
