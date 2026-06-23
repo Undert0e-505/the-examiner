@@ -1023,8 +1023,30 @@ def run_pipeline(
             engine_label=engine_label,
             published_at_iso=published_at_iso,
         )
+        # Build the full list of all known batches for the index page
+        all_metas = [meta]
+        for other_slug in publish.discover_batches():
+            if other_slug == slug:
+                continue
+            try:
+                other_summary = publish.parse_summary(other_slug)
+                other_questions = []
+                for q_row in other_summary.get("q_rows", []):
+                    q_padded = "Q" + q_row["q"].lstrip("Q").zfill(2)
+                    q = publish.parse_question_marking(other_slug, q_padded)
+                    if q is not None:
+                        other_questions.append(q)
+                other_questions.sort(key=lambda q: int(q["qnum"]))
+                all_metas.append({
+                    "slug": other_slug,
+                    "total_awarded": sum(q["total_awarded"] for q in other_questions) if other_questions else other_summary.get("total_awarded", 0),
+                    "total_available": sum(q["total_available"] for q in other_questions) if other_questions else other_summary.get("total_available", 0),
+                    "kvdb_bucket": publish.read_kvdb_bucket_from_paper(other_slug),
+                })
+            except Exception:
+                all_metas.append({"slug": other_slug, "total_awarded": 0, "total_available": 0})
         publish.publish_index(
-            [meta],
+            all_metas,
             dry_run=False,
             engine_label=engine_label,
             published_at_iso=published_at_iso,
@@ -1118,6 +1140,10 @@ def run_pipeline(
             if q is not None:
                 questions.append(q)
         questions.sort(key=lambda q: int(q["qnum"]))
+        # Override summary totals with correct Q-file sums
+        if questions:
+            summary_parse["total_available"] = sum(q["total_available"] for q in questions)
+            summary_parse["total_awarded"] = sum(q["total_awarded"] for q in questions)
         public_url = f"https://undert0e-505.github.io/the-examiner/assessments/{slug}.html"
         subj = send_email.subject_for(slug, summary_parse)
         body = send_email.render_email_body(slug, summary_parse, questions, student, public_url, to_mode)
