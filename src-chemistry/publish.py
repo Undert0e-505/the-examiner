@@ -1401,6 +1401,12 @@ def publish_one(slug: str, student: dict, dry_run: bool = False, engine_label: s
     # Sort numerically by Q number
     questions.sort(key=lambda q: int(q["qnum"]))
 
+    # Override summary totals with the correct values computed from
+    # per-question files. The LLM's SUMMARY.md arithmetic is unreliable.
+    if questions:
+        summary["total_available"] = sum(q["total_available"] for q in questions)
+        summary["total_awarded"] = sum(q["total_awarded"] for q in questions)
+
     html_doc = narration_rewrite(render_per_batch_html(meta, summary, questions, student, kvdb_bucket, engine_label=engine_label, published_at_iso=published_at_iso, css_v=css_fingerprint()))
 
     out = PAGES_ASSESSMENTS / f"{slug}.html"
