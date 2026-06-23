@@ -287,98 +287,92 @@ For each question Q-NN, start with:
 
 === Q{q_num:02d} ===
 
-Then write EXACTLY this structure (in this order):
+Then write these four sections in this order. Do NOT wrap any section in
+triple-backtick code fences. Write all content as plain markdown text.
 
 ### 1. Question identification
 
-```
+Write these three lines as plain text (no code fences, no bold):
+
 Total marks available: <integer>
 Question sub-parts covered by the transcripts: <e.g. Q01.1, Q01.2, Q01.3, Q01.4, Q01.5, Q01.6>
 Printed-context summary: <one sentence describing what the question asks>
-```
 
 ### 2. Per-criterion marking
 
-For EACH criterion in this question, write a block starting with:
+For EACH criterion in this question, write a block. The header line must be:
 
-```
 ### Criterion N: <AO> -- <marks> mark(s)
-```
 
-Use exactly TWO ASCII hyphens `--` (NOT em-dash, NOT en-dash).
+Use exactly TWO ASCII hyphens -- (NOT em-dash, NOT en-dash, NOT single hyphen).
 
-Each block must have these fields with **bold** labels:
+Each block must have these fields with bold labels (write as plain markdown,
+NOT inside code fences):
 
-```
 **Sub-question this criterion applies to:** <Q-NN.X>
-**Indicative content:** <bullet list from the markscheme, prefixed with "- ">
+**Indicative content:** <bullet list from the markscheme, each item prefixed with "- ">
 **Transcript section covered:** <NN.transcript.md, Q-NN.X — or "not covered by any transcript">
 **Decision:** AWARD | NOT_AWARD | NOT_APPLICABLE
 **Marks awarded:** <integer 0 to marks available>
-**Justification:** <2-4 sentences quoting the student's answer where relevant>
-```
+**Justification:** <2-4 sentences quoting the student answer where relevant>
 
 ### 3. Legibility assessment
 
-Write a block with EXACTLY these bold-label fields (no prose, no other format):
+Write a header line:
 
-```
 ### Legibility
+
+Then these four fields with bold labels (plain markdown, no code fences):
 
 **legibility_score:** <integer 0-5>
 **ocr_mode:** <one of: clear_read | minor_uncertainty | context_inferred | unreadable>
 **reason:** <one short sentence>
 **student_feedback:** <one short sentence, second person "Your handwriting...">
-```
 
 ### 4. Question summary
 
-Use EXACTLY this header (H2, no number):
+Write this header (H2, no number, no code fence):
 
-```
 ## Question Summary
+
+Then three lines as plain text:
 
 **Total marks awarded for this question:** <integer> out of <integer>
 **What cost the most marks:** <one sentence>
 **Legibility summary:** <one short sentence>
-```
 
 After all {question_count} questions, write:
 
 === SUMMARY ===
 
-Then write EXACTLY this structure:
+Then write these lines as plain text (no code fences, no bold, no backticks):
 
-```
 Paper code: <e.g. 8462/1H>
 Sitting: <e.g. Friday 17 May 2024>
 Total marks available: {total_marks}
 Total marks awarded: <integer>
-```
 
-Then a tally table with EXACTLY this format (4 columns, Q number first, no topic column):
+Then a tally table as a plain markdown table (no code fences) with EXACTLY
+four columns and this header row:
 
-```
 | Q1 | <available> | <awarded> | <one-sentence notes> |
 | Q2 | <available> | <awarded> | <one-sentence notes> |
-...
-```
 
-Then a section with EXACTLY this header:
+Continue for all {question_count} questions. The first column MUST be the
+Q label (Q1, Q2, etc.), second is marks available, third is marks awarded,
+fourth is notes.
 
-```
+Then a section with this header (H2):
+
 ## Cross-paper observations
 
-<3-5 short paragraphs, student-facing, second person>
-```
+<3-5 short paragraphs, student-facing, second person "You...">
 
-Then a section with EXACTLY this header:
+Then a section with this header (H2):
 
-```
 ## Assessor notes
 
 <pipeline meta: OCR blockers, marking uncertainty, pipeline verdict>
-```
 
 ## Mark scheme (JSON)
 
@@ -390,18 +384,19 @@ Then a section with EXACTLY this header:
 
 ## Critical formatting rules
 
-- Use exactly TWO ASCII hyphens `--` in criterion headers. NOT em-dash.
-- Each criterion block starts with `### Criterion N: <ao> -- <marks> mark(s)`
-- Use `**Field:**` pattern for all fields
+- Do NOT wrap any output in triple-backtick code fences. All content is plain markdown.
+- Use exactly TWO ASCII hyphens -- in criterion headers. NOT em-dash.
+- Each criterion block starts with ### Criterion N: <ao> -- <marks> mark(s)
+- Use **Field:** pattern for all fields
 - Decision values: AWARD | NOT_AWARD | NOT_APPLICABLE (uppercase, underscore)
-- Legibility fields MUST use the exact bold labels: `**legibility_score:**`,
-  `**ocr_mode:**`, `**reason:**`, `**student_feedback:**`
-- Question summary header MUST be `## Question Summary` (H2, no number)
-- SUMMARY.md totals MUST use the format `Total marks available: N` and
-  `Total marks awarded: N` (no bold, no asterisks)
+- Legibility fields MUST use the exact bold labels: **legibility_score:**,
+  **ocr_mode:**, **reason:**, **student_feedback:**
+- Question summary header MUST be ## Question Summary (H2, no number)
+- SUMMARY.md totals MUST be plain text: Total marks available: N and
+  Total marks awarded: N (no bold, no asterisks, no code fences)
 - SUMMARY.md tally table MUST have columns: Q | available | awarded | notes
 - Write all {question_count} question sections plus the summary section.
-- Each section MUST start with its `=== ... ===` delimiter.
+- Each section MUST start with its === ... === delimiter.
 """
 
 def run_marking(
