@@ -1411,8 +1411,10 @@ def publish_one(slug: str, student: dict, dry_run: bool = False, engine_label: s
 
     return {
         **meta,
-        "total_available": summary.get("total_available") or sum(q["total_available"] for q in questions),
-        "total_awarded": summary.get("total_awarded") or sum(q["total_awarded"] for q in questions),
+        # Always compute totals from the per-question files.
+        # The LLM's SUMMARY.md arithmetic is unreliable.
+        "total_available": sum(q["total_available"] for q in questions),
+        "total_awarded": sum(q["total_awarded"] for q in questions),
         "kvdb_bucket": kvdb_bucket,
         "bucket_rotated": bucket_rotated,
     }
