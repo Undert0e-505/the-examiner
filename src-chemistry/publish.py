@@ -61,7 +61,7 @@ PAGES = REPO_ROOT / "pages"
 PAGES_ASSESSMENTS = PAGES / "assessments"
 PAGES_ASSETS = PAGES / "assets"
 PAGES_CSS = PAGES_ASSETS / "css" / "styles.css"
-SRC_CSS = REPO_ROOT / "src" / "assets" / "styles.css"
+SRC_CSS = Path(__file__).resolve().parent / "assets" / "styles.css"
 
 DISPLAY_NAME_OVERRIDE = "the student"   # historical: was the public-name default; no longer used in the title or meta (see comment in render_assessment_html). Kept as a marker for the intent that public-facing strings must never contain a real name.
 
@@ -1433,7 +1433,7 @@ def copy_assets(dry_run: bool = False) -> None:
     are what the live site actually serves."""
     if not SRC_CSS.is_file():
         raise FileNotFoundError(f"{SRC_CSS} does not exist. The CSS source is missing.")
-    src_js = REPO_ROOT / "src" / "assets" / "js" / "feedback.js"
+    src_js = Path(__file__).resolve().parent / "assets" / "js" / "feedback.js"
     if not src_js.is_file():
         raise FileNotFoundError(f"{src_js} does not exist. The client-side JS is missing.")
     if not dry_run:
