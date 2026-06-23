@@ -1279,17 +1279,60 @@ def parse_args(argv=None) -> argparse.Namespace:
              "image attachments, no sandbox). Currently affects the "
              "auto-discover step; OCR + marking still use Codex.",
     )
+    p.add_argument(
+        "--remark", action="store_true",
+        help="Re-run the full pipeline (OCR + marking + publish) on the "
+             "photos from the last run. Finds the most recent intake/<slug>/ "
+             "dir and uses the photos already there. No waiting for new photos.",
+    )
     return p.parse_args(argv)
 
 
 def main(argv=None) -> int:
     args = parse_args(argv)
 
+    if args.remark:
+        # Remark mode: find the most recent intake dir and use its photos
+        import glob
+        intake_dirs = sorted(
+            [p for p in Path(REPO_ROOT / "intake").iterdir()
+             if p.is_dir() and not p.name.startswith("_") and not p.name.startswith(".")],
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not intake_dirs:
+            print("ERROR: --remark found no intake directories.", file=sys.stderr)
+            return 1
+        slug = intake_dirs[0].name
+        photo_paths = sorted(intake_dirs[0].glob("*.jpg"))
+        print(f"Remark mode: re-running {slug} with {len(photo_paths)} photos from {intake_dirs[0]}", flush=True)
+        result = run_pipeline(
+            slug=slug,
+            photo_paths=photo_paths,
+            page_order=None,
+            to_mode=args.to,
+            dry_run=args.dry_run,
+            skip_codex=False,
+            auto_discover_mode=False,
+            photos_hint=None,
+            engine=args.engine,
+        )
+        print("", flush=True)
+        print("=" * 60, flush=True)
+        print("PIPELINE SUMMARY", flush=True)
+        print("=" * 60, flush=True)
+        for stage, status in result.get("stages", {}).items():
+            print(f"  {stage}: {status}", flush=True)
+        if result.get("aborted"):
+            print(f"  ABORTED: {result.get('aborted')}", flush=True)
+            return 1
+        return 0
+
     if not args.skip_codex and not args.auto_discover and not args.photos:
-        print("ERROR: --photos is required unless --skip-codex or --auto-discover is set.", file=sys.stderr)
+        print("ERROR: --photos is required unless --skip-codex or --auto-discover or --remark is set.", file=sys.stderr)
         return 1
     if not args.auto_discover and not args.slug:
-        print("ERROR: --slug is required unless --auto-discover is set.", file=sys.stderr)
+        print("ERROR: --slug is required unless --auto-discover or --remark is set.", file=sys.stderr)
         return 1
 
     if not args.yes and not args.dry_run:
