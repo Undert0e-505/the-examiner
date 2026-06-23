@@ -491,31 +491,39 @@ def auto_discover(
     classification = englit_discover.classify_photos(photo_paths)
 
     cover_code = classification.get("cover_paper_code", "unknown")
-    # Derive slug from paper code
-    code_norm = cover_code.replace("/", "").replace("\\", "").replace(" ", "-").lower()
-    # Try to match against known papers
-    papers_dir = REPO_ROOT / "papers"
-    discovered_slug = None
-    if papers_dir.is_dir():
-        for p in papers_dir.iterdir():
-            if p.is_dir():
-                paper_json = p / "paper.json"
-                if paper_json.is_file():
-                    try:
-                        pj = json.loads(paper_json.read_text(encoding="utf-8"))
-                        if pj.get("paper_code", "").replace("/", "").lower().replace(" ", "-") == code_norm:
-                            discovered_slug = p.name
-                            break
-                    except (json.JSONDecodeError, KeyError):
-                        pass
-    # Fallback: try the code as-is
+    # Derive slug from paper code. Try multiple strategies:
+    # 1. Direct code -> slug map (known AQA codes)
+    # 2. Match normalised code against paper.json slug field
+    # 3. Match normalised code against directory names
+    code_map = {
+        "8702/1": "aqa-87021-english-literature-2024-05",
+        "8702/1H": "aqa-87021-english-literature-2024-05",
+        "8702/2": "aqa-87022-english-literature-2024-05",
+        "8702/2H": "aqa-87022-english-literature-2024-05",
+        "8462/1H": "aqa-84621h-chemistry-higher-2024-05",
+        "8462/2H": "aqa-84622h-chemistry-higher-2024-05",
+        "8461/1H": "aqa-84611h-biology-higher-2024-05",
+        "1MA1/1H": "edexcel-1ma11h-mathematics-higher-2024-11",
+    }
+    discovered_slug = code_map.get(cover_code)
     if not discovered_slug:
-        # Map common AQA codes to known slugs
-        code_map = {
-            "8702/1H": "aqa-87021-english-literature-2024-05",
-            "8702/2H": "aqa-87022-english-literature-2024-05",
-        }
-        discovered_slug = code_map.get(cover_code)
+        # Try matching against paper.json slug field
+        code_norm = cover_code.replace("/", "").replace("\\", "").replace(" ", "-").lower()
+        papers_dir = REPO_ROOT / "papers"
+        if papers_dir.is_dir():
+            for p in papers_dir.iterdir():
+                if p.is_dir():
+                    paper_json = p / "paper.json"
+                    if paper_json.is_file():
+                        try:
+                            pj = json.loads(paper_json.read_text(encoding="utf-8"))
+                            pj_slug = pj.get("slug", "")
+                            # Check if slug contains the normalised code
+                            if code_norm in pj_slug.replace("-", "").lower():
+                                discovered_slug = p.name
+                                break
+                        except (json.JSONDecodeError, KeyError):
+                            pass
     if not discovered_slug:
         raise ValueError(
             f"Could not derive slug from paper code {cover_code!r}. "
