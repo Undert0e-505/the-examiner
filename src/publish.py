@@ -1,4 +1,4 @@
-﻿"""
+"""
 src/publish.py - generate the static HTML for the per-assessment
                   pages and the dashboard index.
 
@@ -340,22 +340,30 @@ def parse_summary(slug: str) -> dict:
     if m: paper_code = m.group(1).strip()
     m = re.search(r"Sitting:\s*([^\n]+)", content)
     if m: sitting = m.group(1).strip()
-    m = re.search(r"Total marks available:\s*(\d+)", content)
+    m = re.search(r"Total marks available:\s*\*\*?(\d+)", content)
+    if not m:
+        m = re.search(r"\*\*Total marks available:\*\*\s*(\d+)", content)
     if m: total_available = int(m.group(1))
-    m = re.search(r"Total marks awarded:\s*(\d+)", content)
+    m = re.search(r"Total marks awarded:\s*\*\*?(\d+)", content)
+    if not m:
+        m = re.search(r"\*\*Total marks awarded:\*\*\s*(\d+)", content)
     if m: total_awarded = int(m.group(1))
 
     # Per-question tally table - match "| Q1 | 10 | 8 | <notes> |"
     q_rows = []
     for m in re.finditer(
-        r"\|\s*(Q\d+)\s*\|\s*(\d+)\s*\|\s*(\d+)\s*\|\s*([^|]+?)\s*\|",
+        r"\|\s*(?:Q)?(\d+)\s*\|\s*[^|]+\s*\|\s*(\d+)\s*\|\s*(\d+)\s*(?:\|\s*[^|]*)?\|",
         content,
     ):
+        q_label = m.group(1)
+        # Normalise to "Q1" form
+        if not q_label.startswith("Q"):
+            q_label = f"Q{q_label}"
         q_rows.append({
-            "q": m.group(1),
+            "q": q_label,
             "available": int(m.group(2)),
             "awarded": int(m.group(3)),
-            "notes": m.group(4).strip(),
+            "notes": "",
         })
 
     # Observations - pull the paragraphs from "## Cross-paper observations"
@@ -449,7 +457,9 @@ def parse_question_marking(slug: str, q_label: str) -> dict:
     qnum = str(int(qnum))   # normalize "01" -> "1"
     qnum = qnum.zfill(2)
     total_avail = None
-    m = re.search(r"Total marks available:\s*(\d+)", content)
+    m = re.search(r"Total marks available:\s*\*\*?(\d+)", content)
+    if not m:
+        m = re.search(r"\*\*Total marks available:\*\*\s*(\d+)", content)
     if m: total_avail = int(m.group(1))
 
     subparts_covered = ""

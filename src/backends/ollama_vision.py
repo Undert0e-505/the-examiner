@@ -281,22 +281,104 @@ student's transcripts (one per page) and the full mark scheme in JSON.
 For each question group Q1-Q{question_count}, produce a marking file section.
 Then produce a summary section. Use the exact delimiters below.
 
-## Output format
+## Output format — STRICT, do not deviate
 
 For each question Q-NN, start with:
 
 === Q{q_num:02d} ===
 
-Then write the marking content following the format in the marking prompt
-(per-criterion blocks with ### Criterion N headers, legibility block,
-question summary).
+Then write EXACTLY this structure (in this order):
 
-After all questions, write:
+### 1. Question identification
+
+```
+Total marks available: <integer>
+Question sub-parts covered by the transcripts: <e.g. Q01.1, Q01.2, Q01.3, Q01.4, Q01.5, Q01.6>
+Printed-context summary: <one sentence describing what the question asks>
+```
+
+### 2. Per-criterion marking
+
+For EACH criterion in this question, write a block starting with:
+
+```
+### Criterion N: <AO> -- <marks> mark(s)
+```
+
+Use exactly TWO ASCII hyphens `--` (NOT em-dash, NOT en-dash).
+
+Each block must have these fields with **bold** labels:
+
+```
+**Sub-question this criterion applies to:** <Q-NN.X>
+**Indicative content:** <bullet list from the markscheme, prefixed with "- ">
+**Transcript section covered:** <NN.transcript.md, Q-NN.X — or "not covered by any transcript">
+**Decision:** AWARD | NOT_AWARD | NOT_APPLICABLE
+**Marks awarded:** <integer 0 to marks available>
+**Justification:** <2-4 sentences quoting the student's answer where relevant>
+```
+
+### 3. Legibility assessment
+
+Write a block with EXACTLY these bold-label fields (no prose, no other format):
+
+```
+### Legibility
+
+**legibility_score:** <integer 0-5>
+**ocr_mode:** <one of: clear_read | minor_uncertainty | context_inferred | unreadable>
+**reason:** <one short sentence>
+**student_feedback:** <one short sentence, second person "Your handwriting...">
+```
+
+### 4. Question summary
+
+Use EXACTLY this header (H2, no number):
+
+```
+## Question Summary
+
+**Total marks awarded for this question:** <integer> out of <integer>
+**What cost the most marks:** <one sentence>
+**Legibility summary:** <one short sentence>
+```
+
+After all {question_count} questions, write:
 
 === SUMMARY ===
 
-Then write the SUMMARY.md content (paper header, per-question tally table,
-cross-paper observations, assessor notes).
+Then write EXACTLY this structure:
+
+```
+Paper code: <e.g. 8462/1H>
+Sitting: <e.g. Friday 17 May 2024>
+Total marks available: {total_marks}
+Total marks awarded: <integer>
+```
+
+Then a tally table with EXACTLY this format (4 columns, Q number first, no topic column):
+
+```
+| Q1 | <available> | <awarded> | <one-sentence notes> |
+| Q2 | <available> | <awarded> | <one-sentence notes> |
+...
+```
+
+Then a section with EXACTLY this header:
+
+```
+## Cross-paper observations
+
+<3-5 short paragraphs, student-facing, second person>
+```
+
+Then a section with EXACTLY this header:
+
+```
+## Assessor notes
+
+<pipeline meta: OCR blockers, marking uncertainty, pipeline verdict>
+```
 
 ## Mark scheme (JSON)
 
@@ -308,16 +390,19 @@ cross-paper observations, assessor notes).
 
 ## Critical formatting rules
 
-- Use exactly TWO ASCII hyphens `--` (NOT em-dash) in criterion headers.
+- Use exactly TWO ASCII hyphens `--` in criterion headers. NOT em-dash.
 - Each criterion block starts with `### Criterion N: <ao> -- <marks> mark(s)`
-- Use `**Field:**` pattern for fields: `**Sub-question this criterion applies to:**`,
-  `**Indicative content:**`, `**Transcript section covered:**`, `**Decision:**`,
-  `**Marks awarded:**`, `**Justification:**`
-- Decision values: AWARD | NOT_AWARD | NOT_APPLICABLE
+- Use `**Field:**` pattern for all fields
+- Decision values: AWARD | NOT_AWARD | NOT_APPLICABLE (uppercase, underscore)
+- Legibility fields MUST use the exact bold labels: `**legibility_score:**`,
+  `**ocr_mode:**`, `**reason:**`, `**student_feedback:**`
+- Question summary header MUST be `## Question Summary` (H2, no number)
+- SUMMARY.md totals MUST use the format `Total marks available: N` and
+  `Total marks awarded: N` (no bold, no asterisks)
+- SUMMARY.md tally table MUST have columns: Q | available | awarded | notes
 - Write all {question_count} question sections plus the summary section.
 - Each section MUST start with its `=== ... ===` delimiter.
 """
-
 
 def run_marking(
     slug: str,
@@ -384,9 +469,11 @@ def run_marking(
     markscheme_json = json.dumps(ms_trimmed, indent=2, ensure_ascii=False)
 
     # Build the prompt
+    total_marks = sum(q.get("total_marks_for_question", 0) for q in marks)
     user_text = MARKING_USER_PREAMBLE.format(
         question_count=question_count,
         q_num=0,  # placeholder, not used in preamble
+        total_marks=total_marks,
         markscheme_json=markscheme_json,
         transcripts_text=transcripts_text,
     )
