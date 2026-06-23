@@ -1011,6 +1011,7 @@ def run_pipeline(
             published_at_iso=published_at_iso,
         )
         publish.copy_assets(dry_run=False)
+        publish.copy_photos(slug, dry_run=False)
         summary["stages"]["publish"] = "ok"
         summary["meta"] = {
             "total_awarded": meta.get("total_awarded"),
